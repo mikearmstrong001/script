@@ -59,7 +59,7 @@ bool printffloat( vmstate &state )
 	return false;
 }
 
-const var &FindVar( object const *top, int key, vmstate &state )
+static const var &FindVar( object const *top, int key, vmstate &state )
 {
 	// first check object;
 	const object *o = top;
@@ -95,6 +95,56 @@ const var &FindVar( object const *top, int key, vmstate &state )
 	cexception_error("null var");
 	static var NULLVAR;
 	return NULLVAR;
+}
+
+static object *CreateEntries( const int *ops, int &pc, object *o, int entries )
+{
+	for (int i=0; i<entries; i++)
+	{
+		int key = ops[pc++];
+		Map<var>::Iterator f = o->m_tbl.find(key);
+		if ( !f )
+		{
+			var &tv = o->m_tbl[key];
+			tv.type = OBJECT;
+			tv.o = new object;
+			o = tv.o;
+		}
+		else
+		{
+			var &tv = *f.second;
+			if ( tv.type == OBJECT )
+			{
+				o = tv.o;
+			}
+			else
+			{
+				tv.type = OBJECT;
+				tv.o = new object;
+				o = tv.o;
+			}
+		}
+	}
+	return o;
+}
+
+static void PushEntry( const int *ops, int &pc, object *o, int entries, vmstate &state )
+{
+	for (int i=0; i<entries; i++)
+	{
+		int key = ops[pc++];
+		const var &v = FindVar( o, key, state );
+		if ( v.type == OBJECT )
+		{
+			o = v.o;
+		}
+		else
+		{
+			cexception_error("bad type");
+		}
+	}
+	int key = ops[pc++];
+	state.stack.push( FindVar( o, key, state ) );
 }
 
 void RunVM( int const *ops, int numOps, int loc, vmstate &state )
@@ -523,37 +573,9 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( item.type == OBJECT && entries )
 				{
 					object *o = item.o;
-					for (int i=0; i<entries-1; i++)
-					{
-						int key = ops[pc++];
-
-						Map<var>::Iterator f = o->m_tbl.find(key);
-						if ( !f )
-						{
-							var &tv = o->m_tbl.add(key);
-							tv.type = OBJECT;
-							tv.o = new object;
-							o = tv.o;
-						}
-						else
-						{
-							var &tv = *f.second;
-							if ( tv.type == OBJECT )
-							{
-								o = tv.o;
-							}
-							else
-							{
-								tv.type = OBJECT;
-								tv.o = new object;
-								o = tv.o;
-							}
-						}
-					}
-					{
-						int key = ops[pc++];
-						o->m_tbl[key] = v0;
-					}
+					o = CreateEntries( ops, pc, o, entries-1 );
+					int key = ops[pc++];
+					o->m_tbl[key] = v0;
 				}
 				else
 				{
@@ -586,23 +608,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( item.type == OBJECT && entries )
 				{
 					object *o = item.o;
-					for (int i=0; i<entries-1; i++)
-					{
-						int key = ops[pc++];
-						const var &v = FindVar( o, key, state );
-						if ( v.type == OBJECT )
-						{
-							o = v.o;
-						}
-						else
-						{
-							cexception_error("bad type");
-						}
-					}
-					{
-						int key = ops[pc++];
-						state.stack.push( FindVar( o, key, state ) );
-					}
+					PushEntry( ops, pc, o, entries-1, state );
 				}
 				else
 				{
@@ -627,23 +633,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					cexception_error( super_proto_item.type == OBJECT, "super prototype is not object" );
 					o = super_proto_item.o;
 
-					for (int i=0; i<entries-1; i++)
-					{
-						int key = ops[pc++];
-						const var &v = FindVar( o, key, state );
-						if ( v.type == OBJECT )
-						{
-							o = v.o;
-						}
-						else
-						{
-							cexception_error("bad type");
-						}
-					}
-					{
-						int key = ops[pc++];
-						state.stack.push( FindVar( o, key, state ) );
-					}
+					PushEntry( ops, pc, o, entries-1, state );
 				}
 				else
 				{
@@ -661,36 +651,9 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( item.type == OBJECT && entries )
 				{
 					object *o = item.o;
-					for (int i=0; i<entries-1; i++)
-					{
-						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.find(key);
-						if ( f )
-						{
-							var &tv = o->m_tbl[key];
-							tv.type = OBJECT;
-							tv.o = new object;
-							o = tv.o;
-						}
-						else
-						{
-							var &tv = *f.second;
-							if ( tv.type == OBJECT )
-							{
-								o = tv.o;
-							}
-							else
-							{
-								tv.type = OBJECT;
-								tv.o = new object;
-								o = tv.o;
-							}
-						}
-					}
-					{
-						int key = ops[pc++];
-						o->m_tbl[key] = v0;
-					}
+					o = CreateEntries( ops, pc, o, entries-1 );
+					int key = ops[pc++];
+					o->m_tbl[key] = v0;
 				}
 				else
 				{
@@ -723,23 +686,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( item.type == OBJECT && entries )
 				{
 					object *o = item.o;
-					for (int i=0; i<entries-1; i++)
-					{
-						int key = ops[pc++];
-						const var &v = FindVar( o, key, state );
-						if ( v.type == OBJECT )
-						{
-							o = v.o;
-						}
-						else
-						{
-							cexception_error("bad type");
-						}
-					}
-					{
-						int key = ops[pc++];
-						state.stack.push( FindVar( o, key, state ) );
-					}
+					PushEntry( ops, pc, o, entries-1, state );
 				}
 				else
 				{
