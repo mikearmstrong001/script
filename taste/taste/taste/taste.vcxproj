@@ -75,15 +75,19 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\ast.h" />
+    <ClInclude Include="..\..\cexception.h" />
     <ClInclude Include="..\..\Parser.h" />
     <ClInclude Include="..\..\Scanner.h" />
     <ClInclude Include="..\..\SymbolTable.h" />
+    <ClInclude Include="..\..\vm.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\ast.cpp" />
+    <ClCompile Include="..\..\cexception.cpp" />
     <ClCompile Include="..\..\Parser.cpp" />
     <ClCompile Include="..\..\Scanner.cpp" />
     <ClCompile Include="..\..\Taste.cpp" />
+    <ClCompile Include="..\..\vm.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\Parser.frame" />

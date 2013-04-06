@@ -27,6 +27,12 @@
     <ClInclude Include="..\..\ast.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\vm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\cexception.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Parser.cpp">
@@ -39,6 +45,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\ast.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vm.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\cexception.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
