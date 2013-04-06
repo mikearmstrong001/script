@@ -1,0 +1,83 @@
+
+package Test {
+	var int[] items0;
+	var float[] items1;
+	var object[] items2;
+
+	def foo
+	{
+		var float[] x;
+		var float y;
+
+		function void onCreate( object createParams )
+		{
+			self.y = 1.0;
+		}
+	};
+
+	def bah extends foo
+	{
+		var int a;
+		var int b;
+		var float c;
+
+		function void onCreate( object createParams )
+		{
+			super.onCreate( self, createParams );
+			self.pos.x = createParams.pos.x;
+			self.pos.y = createParams.pos.y;
+			self.dir.x = createParams.dir.x;
+			self.dir.y = createParams.dir.y;
+		}
+
+		function void onUpdate( object self, float dt )
+		{
+			self.pos.x = self.pos.x + self.dir.x * dt;
+			self.pos.y = self.pos.y + self.dir.y * dt;
+			if ( self.pos.y > 10.0 )
+			{
+				self.dir.y = -self.dir.y;
+			}
+		
+			if ( self.pos.y < 0.0 )
+			{
+				self.dir.y = -self.dir.y;
+			}
+			printffloat( self.pos.y );
+			printffloat( self.dir.y );
+		}
+    
+	};
+
+	function float testret()
+	{
+		return 8.0;
+	}
+
+	
+	function void Main()
+	{
+		var float f = testret();
+		f = cfunc( 10 );
+		var object t = new bah;
+		var object o;
+		o.pos.x = 0.0;
+		o.pos.y = 0.0;
+		o.dir.x = 0.0;
+		o.dir.y = 1.0;
+		t.onCreate( t, o );
+		var object d = { int a : 20,
+						 object c : { 
+							float a : 21 
+						 }
+					   };
+
+		var int i = 200;
+		while ( i > 0 )
+		{
+			t.onUpdate( o, 0.1 );
+			i = i - 1;
+		}
+	}
+}
+

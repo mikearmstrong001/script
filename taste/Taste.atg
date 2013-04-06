@@ -1,0 +1,465 @@
+#include "ast.h"
+#include "wchar.h"
+
+COMPILER Taste
+
+	int // operators
+	  plus, minus, times, slash, equ, lss, gtr;
+
+	int // types
+	  undef, integer, boolean, floatingpoint, object, voidtype, userptr;
+
+	int // object kinds
+	  var, proc;
+
+	int // opcodes
+	  ADD,  SUB,   MUL,   DIV,   EQU,  LSS, GTR, NEG,
+	  LOAD, STO,   CONST,
+	  CALL, RET,   ENTER, LEAVE,
+	  JMP,  FJMP,
+	  CONSTF, ADDF, SUBF, MULF, DIVF, NEGF,
+	  GETTABLE, ADDO, SUBO, MULO, DIVO, NEGO, LOADOBJECT, STOOBJECT,
+	  INITINT, INITFP, INITOBJ;
+	
+	Package		  *package;
+
+	void Err(wchar_t* msg) {
+		errors->Error(la->line, la->col, msg);
+	}
+
+	void InitDeclarations() { // it must exist
+		plus = 0; minus = 1; times = 2; slash = 3; equ = 4; lss = 5; gtr = 6; // operators
+		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; object = 4; voidtype = 5; userptr = 6;// types
+		var = 0; proc = 1; // object kinds
+
+		// opcodes
+		ADD  =  0; SUB   =  1; MUL   =  2; DIV   =  3; EQU   =  4; LSS = 5; GTR = 6; NEG = 7;
+		LOAD =  8; STO   = 10; CONST = 12;
+		CALL = 13; RET   = 14; ENTER = 15; LEAVE = 16;
+		JMP  = 17; FJMP  = 18;
+		CONSTF = 19; ADDF = 20; SUBF = 21; MULF =  22; DIVF	 = 23; NEGF = 24;
+		GETTABLE = 25; ADDO = 26; SUBO = 27; MULO =  28; DIVO	 = 29; NEGO = 30; LOADOBJECT = 31; STOOBJECT = 32;
+		INITINT = 33; INITFP = 34; INITOBJ = 35;
+
+		package = NULL;
+	}
+
+
+  
+/*--------------------------------------------------------------------------*/
+CHARACTERS
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
+  digit = "0123456789".
+  digitnozero = "123456789".
+  zero = "0".
+  cr  = '\r'.
+  lf  = '\n'.
+  tab = '\t'.
+
+TOKENS
+  ident  = [ letter {letter | digit} ':' ] letter {letter | digit}.
+  //varname = [ letter {letter | digit} ':' ] letter {letter | digit}.
+  number = digit {digit}.
+  floatingpoint = digit {digit} '.' {digit}.
+  
+COMMENTS FROM "/*" TO "*/" NESTED
+COMMENTS FROM "//" TO cr lf
+
+IGNORE cr + lf + tab
+
+
+
+PRODUCTIONS
+/*------------------------------------------------------------------------*/
+Type<int &type>
+=
+ ( "int"						(. type = integer; .)
+ | "bool"						(. type = boolean; .)
+ | "float"						(. type = floatingpoint; .)
+ | "object"						(. type = object; .)
+ | "userptr"					(. type = userptr; .)
+ ).
+
+TypeNotObject<int &type>
+=
+ ( "int"						(. type = integer; .)
+ | "bool"						(. type = boolean; .)
+ | "float"						(. type = floatingpoint; .)
+ | "userptr"					(. type = userptr; .)
+ ).
+
+/*------------------------------------------------------------------------*/
+ReturnType<int &type>
+= 
+	"void"			(. type = voidtype; .)
+	| Type<type>
+  .
+
+/*------------------------------------------------------------------------*/
+
+DataEntry<DataAst *parent>		(. DataAst *data = new DataAst(parent); if ( parent ) parent->AddKid(data); .)
+=
+	( "object" ident ':' DataDefinition<data> )
+	|
+	( 
+		"int"							(. data->SetType( integer ); .)
+		ident							(. data->SetName( t->val ); .)
+		':' 
+		number 							(. data->SetValue( t->val ); .)
+	)
+	|
+	( 
+		"float"							(. data->SetType( floatingpoint ); .)
+		ident							(. data->SetName( t->val ); .)
+		':' 
+		( number | floatingpoint )		(. data->SetValue( t->val ); .)
+	)
+	.
+
+DataDefinition<DataAst *parent>
+=	"{"
+		[ DataEntry<parent> { ',' DataEntry<parent> } ]
+	"}"
+	.
+
+
+VarDecl<VarDeclAst* &varDecl>	(. int type; varDecl = new VarDeclAst; AstBase *expr; .)
+= 
+	"var"
+	(
+		( 
+			"object"						(. varDecl->SetType(object); .)
+			( 
+				[ 
+					'[' ']'					(. varDecl->SetIsArray(); .)
+				]
+			)
+			ident							(. varDecl->SetName(t->val); .)
+			[ '='  
+				( 
+					( 
+						"new" 
+						ident				(. varDecl->SetPrototype(t->val); .) 
+					)
+					| 
+					( 
+						Expr<expr>		(. varDecl->SetExpr( expr ); .)
+					)
+					|	
+					(					(. DataAst *data = new DataAst(varDecl->GetNameWC(), NULL); .)
+						DataDefinition<data> (. varDecl->SetData( data ); .)
+					)
+				)
+			]
+			';' 
+		)
+		|
+		(
+			TypeNotObject<type>				(. varDecl->SetType(type); .)
+			( 
+				[ 
+					'[' ']'					(. varDecl->SetIsArray(); .)
+				]
+			)
+			ident							(. varDecl->SetName(t->val); .)
+			[ '='
+				Expr<expr>					(. varDecl->SetExpr( expr ); .)
+			] ';'
+		)
+	)
+	.
+
+/*------------------------------------------------------------------------*/
+AddOp<int &op>
+=
+	( 
+		'+'				(. op = plus; .)
+		| 
+		'-'				(. op = minus; .)
+	)
+	.
+
+/*------------------------------------------------------------------------*/
+MulOp<int &op>
+=
+	( 
+		'*'				(. op = times; .)
+		| 
+		'/'				(. op = slash; .)
+	)
+	.
+
+/*------------------------------------------------------------------------*/
+Expr<AstBase* &expr>			(. AstBase* other_expr; int op; .)
+= 
+	SimExpr<other_expr>		(. expr = other_expr; .)
+	[ 
+		RelOp<op>
+		SimExpr<other_expr>		(. expr = new BinaryAst( expr, op, other_expr ); .)
+	]
+	.
+
+/*------------------------------------------------------------------------*/
+ObjectMemberList<IdentVec &vec>
+=
+	ident						(. vec.push_back( t->val ); .)
+	{
+		'.'
+		ObjectMemberList<vec>
+	}
+	.
+/*------------------------------------------------------------------------*/
+Factor<AstBase* &factor>			(. AstBase *other_factor; .)
+=                        
+	( 
+		ident						(. IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstVec exprVec; .)
+		[
+			( 
+				'[' 
+					number				(. identFactor->SetArrayIndex( t->val ); .)
+				']'		
+			)
+			| 
+			(
+				'.' ObjectMemberList<identVec>	(. identFactor->SetMemberList( identVec ); .)
+				[ 
+					"(" 
+						[
+							ExprList<exprVec>		
+						] 
+					")"					(. factor = new CallAst( identFactor->GetNameWC(), identVec, exprVec ); delete identFactor; .)
+				]
+			)
+			| 
+			(
+				"("
+					[ 
+						ExprList<exprVec>	
+					]
+				")"					(. factor = new CallAst( identFactor->GetNameWC(), identVec, exprVec ); delete identFactor; .)
+			)
+		]
+	)
+	|
+	( 
+		number						(. factor = new ConstIntegerAst( t->val ); .)
+	)
+	| 
+	(
+		floatingpoint				(. factor = new ConstFloatingPointAst( t->val ); .)
+	)
+	| 
+	( 
+		'-' Factor<other_factor>	(. factor = new NegateAst( other_factor ); .)
+	)
+	| 
+	(
+		"true"						(. factor = new ConstBooleanAst( true ); .)
+	)
+	| 
+	(	
+		"false"						(. factor = new ConstBooleanAst( false ); .)
+	)
+	| 
+	(
+		'(' 
+			Expr<factor> 
+		')'
+	)
+	.
+/*------------------------------------------------------------------------*/
+
+Declaration<DeclInfo &decl>		
+= 
+	Type<decl.type>				
+	ident							(. decl.name = t->val; .)
+	.
+
+DeclarationList<DeclVec &vec>	(. DeclInfo decl; .)
+=
+	Declaration<decl>			(. vec.push_back( decl ); .)
+	{
+		","
+		Declaration<decl>		(. vec.push_back( decl ); .)
+	}
+	.
+
+ExprList<AstVec &vec>			(. AstBase *expr; .)
+=
+	Expr<expr>					(. vec.push_back( expr ); .)
+	{ 
+		',' 
+		Expr<expr>				(. vec.push_back( expr ); .)
+	}.
+/*------------------------------------------------------------------------*/
+ProcDecl<ProcDeclAst* &procDecl>		(. VarDeclAst *varDecl; int type; AstBase *stat; DeclVec declVec; .)
+= 
+	"function"							(. procDecl = new ProcDeclAst(); .)
+	ReturnType<type>						(. procDecl->SetReturnType( type ); .)
+	ident									(. procDecl->SetName( t->val ); .)
+	'('
+		[ 
+			DeclarationList<declVec>
+		]
+	')'									(. procDecl->SetDeclaration(declVec); .)
+	'{'                    
+	{ 
+		VarDecl<varDecl>					(. procDecl->AddBody( varDecl ); .)
+		| Stat<stat>						(. procDecl->AddBody( stat ); .)
+	}
+	'}'
+	.
+
+/*------------------------------------------------------------------------*/
+RelOp<int &op>
+=
+	( 
+		"=="						(. op = equ; .)
+		| '<'							(. op = lss; .)
+		| '>'							(. op = gtr; .)
+	)
+	.
+
+/*------------------------------------------------------------------------*/
+SimExpr<AstBase* &expr>			(. int op; AstBase *term; .)
+= 
+	Term<term>					(. expr = term; .)
+	{ 
+		AddOp<op>
+		Term<term>					(. expr = new BinaryAst( expr, op, term ); .)
+	}
+	.
+/*------------------------------------------------------------------------*/
+Term<AstBase* &term>		(. int op; AstBase *factor; .)
+= 
+	Factor<factor>			(. term = factor; .)
+	{ 
+		MulOp<op>
+		Factor<factor>			(. term = new BinaryAst( term, op, factor ); .)
+	}
+	.
+/*------------------------------------------------------------------------*/
+Stat<AstBase *&stat>			(. VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *substat; .)
+= 
+	(
+		"if"						
+		'(' 
+			Expr<expr> 
+		')'						(. IfAst *ifstat = new IfAst( expr ); stat = ifstat; .)
+		'{' 
+			{ 
+				Stat<substat>				(. ifstat->AddIf( substat ); .)
+				| VarDecl<varDecl>		(. ifstat->AddIf( varDecl ); .)
+			} 
+		'}'	
+		[ 
+			"else"
+			'{' 
+				{ 
+					Stat<substat>				(. ifstat->AddElse( substat ); .)
+					| VarDecl<varDecl>			(. ifstat->AddElse( varDecl ); .)
+				} 
+			'}'
+		]
+	)
+	| 
+	(
+		"return"
+		[ 
+			Expr<expr> 
+		]
+		';'							(. stat = new ReturnStat( expr ); .)
+	)
+	| 
+	(
+		"while"						    
+		'(' 
+			Expr<expr> 
+		')'			(. WhileAst *whilestat = new WhileAst( expr ); stat = whilestat; .)
+		'{' 
+			{ 
+				Stat<substat>				(. whilestat->AddExpr( substat ); .)
+				| VarDecl<varDecl>			(. whilestat->AddExpr( varDecl ); .)
+			} 
+		'}'
+	) 						
+	| 
+	(
+		'{'							(. BlockAst *blockstat = new BlockAst; stat = blockstat; .)
+			{ 
+				Stat<substat>				(. blockstat->AddExpr( substat ); .)
+				| VarDecl<varDecl>			(. blockstat->AddExpr( varDecl ); .)
+			} 
+		'}'
+	)
+	| 
+	(
+		ident							(. IdentAst *identStat = new IdentAst( t->val ); stat = identStat; IdentVec identVec; .)
+		(
+			[ 
+				( 
+					'['
+					number					(. identStat->SetArrayIndex( t->val ); .)
+					']'
+				)
+				| 
+				(
+					'.' 
+					ObjectMemberList<identVec> (. identStat->SetMemberList( identVec ); .)
+				)
+			]
+			[
+				( 
+					'='
+					Expr<expr>			(. stat = new AssignAst( identStat->GetNameWC(), identStat->GetArrayIndex(), identVec, expr ); delete identStat; .)
+				)
+				| 
+				(
+					'('							(. AstVec exprVec; .)
+						[
+							ExprList<exprVec>
+						]
+					')'						(. stat = new CallAst( identStat->GetNameWC(), identVec, exprVec ); delete identStat; .)
+				)
+			]
+		)
+		';'
+	)
+	.
+
+Def<DefDecl *&def>				(. VarDeclAst *varDecl; ProcDeclAst *procDecl; .)
+=
+	"def"
+	ident							(. def = new DefDecl( t->val ); .)
+	(
+		[
+			"extends"
+			ident					(. def->SetExtends( t->val ); .)
+		]
+	)
+	'{'
+		{
+			VarDecl<varDecl>		(. def->AddVarDecl( varDecl ); .)
+			| 
+			ProcDecl<procDecl>		(. def->AddProcDecl( procDecl ); .)
+		}
+	'}'
+	';'
+	.
+
+
+/*------------------------------------------------------------------------*/
+Taste			(. DefDecl *defDecl; VarDeclAst *varDecl; ProcDeclAst *procDecl; .)
+= "package"		
+  ident			(. package = new Package( t->val ); .)
+  '{'
+	  { 
+		Def<defDecl>		(. package->AddDefDecl( defDecl ); .)
+		| VarDecl<varDecl>		(. package->AddVarDecl( varDecl ); .)
+		| ProcDecl<procDecl>	(. package->AddProcDecl( procDecl ); .)
+	  }
+  '}'
+  .
+/*------------------------------------------------------------------------*/
+
+END Taste.

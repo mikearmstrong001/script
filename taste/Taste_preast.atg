@@ -1,0 +1,386 @@
+#include "SymbolTable.h"
+#include "CodeGenerator.h"
+#include "wchar.h"
+
+COMPILER Taste
+
+
+	int // operators
+	  plus, minus, times, slash, equ, lss, gtr;
+
+	int // types
+	  undef, integer, boolean, floatingpoint, object, voidtype;
+
+	int // object kinds
+	  var, proc;
+
+	int // opcodes
+	  ADD,  SUB,   MUL,   DIV,   EQU,  LSS, GTR, NEG,
+	  LOAD, STO,   CONST,
+	  CALL, RET,   ENTER, LEAVE,
+	  JMP,  FJMP,
+	  CONSTF, ADDF, SUBF, MULF, DIVF, NEGF,
+	  GETTABLE, ADDO, SUBO, MULO, DIVO, NEGO, LOADOBJECT, STOOBJECT,
+	  INITINT, INITFP, INITOBJ;
+	
+	SymbolTable   *tab;
+	CodeGenerator *gen;
+
+	void Err(wchar_t* msg) {
+		errors->Error(la->line, la->col, msg);
+	}
+
+	void InitDeclarations() { // it must exist
+		plus = 0; minus = 1; times = 2; slash = 3; equ = 4; lss = 5; gtr = 6; // operators
+		undef = 0; integer = 1; boolean = 2; floatingpoint = 3; object = 4; voidtype = 5;// types
+		var = 0; proc = 1; // object kinds
+
+		// opcodes
+		ADD  =  0; SUB   =  1; MUL   =  2; DIV   =  3; EQU   =  4; LSS = 5; GTR = 6; NEG = 7;
+		LOAD =  8; STO   = 10; CONST = 12;
+		CALL = 13; RET   = 14; ENTER = 15; LEAVE = 16;
+		JMP  = 17; FJMP  = 18;
+		CONSTF = 19; ADDF = 20; SUBF = 21; MULF =  22; DIVF	 = 23; NEGF = 24;
+		GETTABLE = 25; ADDO = 26; SUBO = 27; MULO =  28; DIVO	 = 29; NEGO = 30; LOADOBJECT = 31; STOOBJECT = 32;
+		INITINT = 33; INITFP = 34; INITOBJ = 35;
+	}
+
+
+  
+/*--------------------------------------------------------------------------*/
+CHARACTERS
+  letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".
+  digit = "0123456789".
+  digitnozero = "123456789".
+  zero = "0".
+  cr  = '\r'.
+  lf  = '\n'.
+  tab = '\t'.
+
+TOKENS
+  ident  = letter {letter | digit}.
+  number = digit {digit}.
+  floatingpoint = digit {digit} '.' {digit}.
+  
+COMMENTS FROM "/*" TO "*/" NESTED
+COMMENTS FROM "//" TO cr lf
+
+IGNORE cr + lf + tab
+
+
+
+PRODUCTIONS
+/*------------------------------------------------------------------------*/
+AddOp<int &op>
+=                        (. op = -1; .)
+  ( '+'	                 (. op = plus; .)
+  | '-'                  (. op = minus; .)
+  ).
+/*------------------------------------------------------------------------*/
+Expr<int &type>          (. int type1, op; .)
+= SimExpr<type>
+  [ RelOp<op>
+    SimExpr<type1>       (. if (type != type1) Err(L"incompatible types");
+                            gen->Emit(op); type = boolean; .)
+  ].
+
+/*------------------------------------------------------------------------*/
+ObjectMemberList<int &args> (. wchar_t* name; .)
+=
+	Ident<name>		(. args++; gen->Emit4( GETTABLE, coco_string_hash(name) ); .)
+	{
+		'.'
+		ObjectMemberList<args>
+	}
+	.
+/*------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------*/
+Factor<int &type>        (. int n; int args=0; Obj *obj; wchar_t* name; float f; bool proccall = false;.)
+=                        (. type = undef; .)
+  ( Ident<name>          (. obj = tab->Find(name); type = obj->type;
+                            if (obj->kind == var) {
+								gen->Emit(LOAD, (obj->level == 0) ? -(obj->adr+1) : obj->adr);
+                            } else 
+							if (obj->kind == proc)
+							{
+								//gen->Emit(LOAD, obj->adr);
+							} else
+							if (obj->kind == object)
+							{
+								gen->Emit(LOAD, (obj->level == 0) ? -(obj->adr+1) : obj->adr);
+							} else
+								Err(L"variable expected"); .)
+	[ '.' ObjectMemberList<args> (. gen->Emit( LOADOBJECT ); .)
+	]
+	[
+		"(" {ExprList} ")"	(. proccall = true;
+								if (obj->kind == proc)
+								gen->Emit(CALL, obj->adr); 
+								if (obj->type == object)
+								{
+									gen->Emit(CALL, -(args+1));
+								}
+							.)
+	]						(. if ( !proccall && obj->kind == proc )
+								gen->Emit(LOAD, obj->adr); .)
+  | number               (. swscanf(t->val, L"%d", &n);	//n = Convert.ToInt32(t->val); 
+                            gen->Emit4(CONST, n); type = integer; .)
+  | floatingpoint        (. swscanf(t->val, L"%f", &f);
+                            gen->Emit(CONSTF, f); type = floatingpoint; .)
+  | '-'
+    Factor<type>         (. 
+							if (type == integer)
+								gen->Emit(NEG); 
+							else
+							if (type == floatingpoint)
+								gen->Emit(NEGF);
+							else
+							{
+								gen->Emit(NEGO);
+							}
+						.)
+  | "true"               (. gen->Emit4(CONST, 1); type = boolean; .)
+  | "false"              (. gen->Emit4(CONST, 0); type = boolean; .)
+  | '('
+	Expr<type>
+	')'
+  ).
+/*------------------------------------------------------------------------*/
+Ident<wchar_t* &name>
+= ident                  (. name = coco_string_create(t->val); .).
+/*------------------------------------------------------------------------*/
+MulOp<int &op>
+=                        (. op = -1; .)
+  ( '*'                  (. op = times; .)
+  | '/'                  (. op = slash; .)
+  ).
+/*------------------------------------------------------------------------*/
+
+Declaration<FuncDeclList* &list>			 (. int type; wchar_t* name; .)
+= Type<type>
+  Ident<name>		     (. FuncDecl fd; fd.type = type; fd.name = name; list->push_back(fd); .)
+  .
+
+DeclarationList<FuncDeclList* &list>			 
+=
+	Declaration<list> { ',' Declaration<list> }.
+
+ExprList (. int type; .)
+=
+	Expr<type> { ',' Expr<type> }.
+/*------------------------------------------------------------------------*/
+ReturnType<int &type>
+= 
+	"void"				(. type = voidtype; .)
+	| Type<type>
+  .
+/*------------------------------------------------------------------------*/
+ProcDecl                 (. wchar_t* name; Obj *obj; int adr; FuncDeclList *objfuncdecl=0; int type; .)
+= ReturnType<type>
+  Ident<name>            (. obj = tab->NewObj(name, proc, undef); obj->adr = gen->pc;
+							objfuncdecl = &obj->funcdecl;
+                            if (coco_string_equal(name, L"Main")) gen->progStart = gen->pc; 
+                            tab->OpenScope(); .)
+  '('
+  { DeclarationList<objfuncdecl> } (. for (unsigned int i=0; i<obj->funcdecl.size(); i++) { tab->NewObj(obj->funcdecl[i].name, var, obj->funcdecl[i].type); } .)
+  ')'
+  '{'                    (. gen->Emit(ENTER, 0); adr = gen->pc - 2; .)
+  { VarDecl | Stat }
+  '}'                    (. gen->Emit(LEAVE); gen->Emit(RET);
+                            gen->Patch(adr, tab->topScope->nextAdr);
+                            tab->CloseScope(); .).
+/*------------------------------------------------------------------------*/
+RelOp<int &op>
+=                        (. op = -1; .)
+  ( "=="                 (. op = equ; .)
+  | '<'                  (. op = lss; .)
+  | '>'                  (. op = gtr; .)
+  ).
+/*------------------------------------------------------------------------*/
+SimExpr<int &type>       (. int type1, op; .)
+= Term<type>
+  { AddOp<op>
+    Term<type1>      (. 
+						if (type == integer && type1 == integer )
+						{
+							if ( op == plus )
+								gen->Emit(ADD);
+							else
+							if ( op == minus )
+								gen->Emit(SUB);
+							else
+								Err(L"bad operator");
+						}
+						else
+						if (type == floatingpoint && type1 == floatingpoint )
+						{
+							if ( op == plus )
+								gen->Emit(ADDF);
+							else
+							if ( op == minus )
+								gen->Emit(SUBF);
+							else
+								Err(L"bad operator");
+						}
+						else
+						{
+							type = object;
+							if ( op == plus )
+								gen->Emit(ADDO);
+							else
+							if ( op == minus )
+								gen->Emit(SUBO);
+							else
+								Err(L"bad operator");
+						}
+						.)
+	}.
+/*------------------------------------------------------------------------*/
+/*------------------------------------------------------------------------*/
+Stat                     (. int type; wchar_t* name; Obj *obj; int args=0;
+                            int adr, adr2, loopstart; .)
+= Ident<name>           (. obj = tab->Find(name); .) 
+	[ '.' 
+		ObjectMemberList<args>		
+	]	
+  ( '='                  (. if (obj->kind != var) Err(L"cannot assign to procedure"); .)
+		Expr<type> ';'
+											   (. 
+													if (type != obj->type && (type != object && obj->type != object) ) Err(L"incompatible types");
+													  if (obj->type == object )
+													  {
+														gen->Emit(STOOBJECT);
+													  }
+													  else
+													  {
+														gen->Emit(STO, (obj->level == 0) ? -(obj->adr+1) : obj->adr); 
+													  }
+												.)
+
+	| '(' 
+	{ ExprList }
+	')' ';'          (. if (obj->kind == proc )  
+							gen->Emit(CALL, obj->adr); 
+						else
+						if (obj->kind == var && obj->type == object)
+							gen->Emit(CALL, -(args+1));
+						else
+							Err(L"object is not a procedure");
+					.)
+	)
+
+| "if" 
+	'(' Expr<type> ')' (. if (type != boolean) Err(L"boolean type expected");
+													  gen->Emit(FJMP, 0); adr = gen->pc - 2; .)
+	Stat
+	[ "else"               (. gen->Emit(JMP, 0); adr2 = gen->pc - 2;
+													  gen->Patch(adr, gen->pc);
+													  adr = adr2; .)
+		Stat 
+	]                      (. gen->Patch(adr, gen->pc); .)
+
+| "while"                (. loopstart = gen->pc; .)
+	'(' Expr<type> ')' (. if (type != boolean) Err(L"boolean type expected");
+													  gen->Emit(FJMP, 0); adr = gen->pc - 2; .)
+	Stat                   (. gen->Emit(JMP, loopstart); gen->Patch(adr, gen->pc); .)
+
+| '{' { Stat | VarDecl } '}' .
+/*------------------------------------------------------------------------*/
+Taste                    (. wchar_t* name;
+                            InitDeclarations(); .)
+= "program"
+  Ident<name>            (. tab->OpenScope(); .)
+  '{'					 (. gen->Emit( ENTER, 0 ); .)
+  { 
+	VarDecl				 
+  }						 (. gen->Emit( LEAVE ); .)
+  { ProcDecl }
+  '}'                    (. tab->CloseScope(); .).
+/*------------------------------------------------------------------------*/
+Term<int &type>          (. int type1, op; .)
+= Factor<type>
+  { MulOp<op>
+    Factor<type1>        (. 
+							if (type == integer || type1 == integer)
+							{
+								if ( op == times )
+									gen->Emit(MUL);
+								else
+								if ( op == slash )
+									gen->Emit(DIV);
+								else
+									Err(L"unknown operator");
+							}
+							else
+							if (type == floatingpoint || type1 == floatingpoint)
+							{
+								if ( op == times )
+									gen->Emit(MULF);
+								else
+								if ( op == slash )
+									gen->Emit(DIVF);
+								else
+									Err(L"unknown operator");
+							}
+							else
+							{
+								type = object;
+								if ( op == times )
+									gen->Emit(MULO);
+								else
+								if ( op == slash )
+									gen->Emit(DIVO);
+								else
+									Err(L"unknown operator");
+							}
+                         .)
+	}.
+/*------------------------------------------------------------------------*/
+Type<int &type>
+=                        (. type = undef; .)
+ ( "int"                 (. type = integer; .)
+ | "bool"                (. type = boolean; .)
+ | "float"				 (. type = floatingpoint; .)
+ | "object"				 (. type = object; .)
+ ).
+/*------------------------------------------------------------------------*/
+VarDeclName<int &type>                  (. wchar_t* name;  .)
+=
+  Ident<name>            (. Obj *obj = tab->NewObj(name, var, type); 
+							if ( obj->type == integer )
+								gen->Emit( INITINT, obj->level == 0 ? -(obj->adr+1) : obj->adr );
+							else
+							if ( obj->type == floatingpoint )
+								gen->Emit( INITFP, obj->level == 0 ? -(obj->adr+1) : obj->adr );
+							else
+							if ( obj->type == object )
+								gen->Emit( INITOBJ, obj->level == 0 ? -(obj->adr+1) : obj->adr );
+							else
+								Err(L"unknown typ");
+								
+							.)
+  [ '='                  (. if (obj->type == object) Err(L"can't assign to object"); .)
+		Expr<type>
+											   (. 
+													if (type != obj->type && (type != object && obj->type != object) ) Err(L"incompatible types");
+													  if (obj->type == object )
+													  {
+														gen->Emit(STOOBJECT);
+													  }
+													  else
+													  {
+														gen->Emit(STO, (obj->level == 0) ? -(obj->adr+1) : obj->adr); 
+													  }
+												.)
+  ].
+  
+
+VarDecl                  (. int type; .)
+= Type<type>
+	VarDeclName<type>
+	{
+		','
+		VarDeclName<type>
+	} ';' .
+
+END Taste.
