@@ -553,7 +553,7 @@ void Parser::Def(DefDecl *&def) {
 }
 
 void Parser::Taste() {
-		DefDecl *defDel; VarDeclAst *varDecl; ProcDeclAst *procDecl; 
+		DefDecl *defDecl; VarDeclAst *varDecl; ProcDeclAst *procDecl; 
 		Expect(39 /* "package" */);
 		Expect(_ident);
 		package = new Package( t->val ); 
