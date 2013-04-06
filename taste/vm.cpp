@@ -65,7 +65,7 @@ const var &FindVar( object const *top, int key, vmstate &state )
 	const object *o = top;
 	while ( o )
 	{
-		Map<var>::ConstIterator f = o->m_tbl.find( key );
+		Map<var>::ConstIterator f = o->m_tbl.cfind( key );
 		if ( f )
 		{
 			return *f.second;
@@ -73,7 +73,7 @@ const var &FindVar( object const *top, int key, vmstate &state )
 		// not found check prototype
 		if ( o->prototype != -1 )
 		{
-			Map<var>::Iterator p = state.globals.find(o->prototype);
+			Map<var>::ConstIterator p = state.globals.cfind(o->prototype);
 			if ( p )
 			{
 				const var &po = *p.second;
@@ -598,80 +598,10 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 						{
 							cexception_error("bad type");
 						}
-#if 0
-						std::map<int,var>::iterator f = o->m_tbl.find(key);
-						if ( f == o->m_tbl.end() )
-						{
-							bool found = false;
-							if ( o->prototype != -1 )
-							{
-								var &pv = state.globals[o->prototype];
-								if ( pv.type == OBJECT )
-								{
-									const object *po = pv.o;
-									std::map<int,var>::const_iterator cf = po->m_tbl.find(key);
-									if ( cf != po->m_tbl.cend() )
-									{
-										const var &tv = cf->second;
-										if ( tv.type == OBJECT )
-										{
-											o  = tv.o;
-											found = true;
-										}
-									}
-								}
-							}
-							
-							if ( !found )
-							{
-								var &tv = o->m_tbl[key];
-								tv.type = OBJECT;
-								tv.o = new object;
-								o = tv.o;
-							}
-						}
-						else
-						{
-							var &tv = f->second;
-							if ( tv.type == OBJECT )
-							{
-								o = tv.o;
-							}
-							else
-							{
-								tv.type = OBJECT;
-								tv.o = new object;
-								o = tv.o;
-							}
-						}
-#endif
 					}
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.find(key);
-						bool found = false;
-						if ( !f )
-						{
-							if ( o->prototype != -1 )
-							{
-								var &pv = state.globals[o->prototype];
-								if ( pv.type == OBJECT )
-								{
-									const object *po = pv.o;
-									Map<var>::ConstIterator cf = po->m_tbl.find(key);
-									if ( cf )
-									{
-										const var &tv = *cf.second;
-										state.stack.push( tv );
-										found = true;
-									}
-								}
-							}
-						}
-						if ( !found )
-						{
-							state.stack.push( o->m_tbl[key] );
-						}
+						state.stack.push( FindVar( o, key, state ) );
 					}
 				}
 				else
@@ -688,97 +618,31 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( item.type == OBJECT && entries )
 				{
 					object *o = item.o;
-					if ( o->prototype != -1 )
-					{
-						const var &proto_item = state.globals[o->prototype];
-						if ( proto_item.type == OBJECT )
-						{
-							o = proto_item.o;
-							if ( o->prototype != -1 )
-							{
-								const var &super_proto_item = state.globals[o->prototype];
-								if ( super_proto_item.type == OBJECT )
-								{
-									o = super_proto_item.o;
-								}
-							}
-						}
-					}
+					cexception_error( o->prototype != -1, "object should have prototype" );
+					const var &proto_item = state.globals[o->prototype];
+					cexception_error( proto_item.type == OBJECT, "prototype is not object" );
+					o = proto_item.o;
+					cexception_error( o->prototype != -1, "prototype should have prototype" );
+					const var &super_proto_item = state.globals[o->prototype];
+					cexception_error( super_proto_item.type == OBJECT, "super prototype is not object" );
+					o = super_proto_item.o;
+
 					for (int i=0; i<entries-1; i++)
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.find(key);
-						if ( f )
+						const var &v = FindVar( o, key, state );
+						if ( v.type == OBJECT )
 						{
-							bool found = false;
-							if ( o->prototype != -1 )
-							{
-								var &pv = state.globals[o->prototype];
-								if ( pv.type == OBJECT )
-								{
-									const object *po = pv.o;
-									Map<var>::ConstIterator cf = po->m_tbl.find(key);
-									if ( cf )
-									{
-										const var &tv = *cf.second;
-										if ( tv.type == OBJECT )
-										{
-											o  = tv.o;
-											found = true;
-										}
-									}
-								}
-							}
-							
-							if ( !found )
-							{
-								var &tv = o->m_tbl[key];
-								tv.type = OBJECT;
-								tv.o = new object;
-								o = tv.o;
-							}
+							o = v.o;
 						}
 						else
 						{
-							var &tv = *f.second;
-							if ( tv.type == OBJECT )
-							{
-								o = tv.o;
-							}
-							else
-							{
-								tv.type = OBJECT;
-								tv.o = new object;
-								o = tv.o;
-							}
+							cexception_error("bad type");
 						}
 					}
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.find(key);
-						bool found = false;
-						if ( f )
-						{
-							if ( o->prototype != -1 )
-							{
-								var &pv = state.globals[o->prototype];
-								if ( pv.type == OBJECT )
-								{
-									const object *po = pv.o;
-									Map<var>::ConstIterator cf = po->m_tbl.find(key);
-									if ( cf )
-									{
-										const var &tv = *cf.second;
-										state.stack.push( tv );
-										found = true;
-									}
-								}
-							}
-						}
-						if ( !found )
-						{
-							state.stack.push( o->m_tbl[key] );
-						}
+						state.stack.push( FindVar( o, key, state ) );
 					}
 				}
 				else
@@ -862,78 +726,19 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					for (int i=0; i<entries-1; i++)
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.find(key);
-						if ( f )
+						const var &v = FindVar( o, key, state );
+						if ( v.type == OBJECT )
 						{
-							bool found = false;
-							if ( o->prototype != -1 )
-							{
-								var &pv = state.globals[o->prototype];
-								if ( pv.type == OBJECT )
-								{
-									const object *po = pv.o;
-									Map<var>::ConstIterator cf = po->m_tbl.find(key);
-									if ( cf )
-									{
-										const var &tv = *cf.second;
-										if ( tv.type == OBJECT )
-										{
-											o = tv.o;
-											found = true;
-										}
-									}
-								}
-							}
-							
-							if ( !found )
-							{
-								var &tv = o->m_tbl[key];
-								tv.type = OBJECT;
-								tv.o = new object;
-								o = tv.o;
-							}
+							o = v.o;
 						}
 						else
 						{
-							var &tv = *f.second;
-							if ( tv.type == OBJECT )
-							{
-								o = tv.o;
-							}
-							else
-							{
-								tv.type = OBJECT;
-								tv.o = new object;
-								o = tv.o;
-							}
+							cexception_error("bad type");
 						}
 					}
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.find(key);
-						bool found = false;
-						if ( f )
-						{
-							if ( o->prototype != -1 )
-							{
-								var &pv = state.globals[o->prototype];
-								if ( pv.type == OBJECT )
-								{
-									const object *po = pv.o;
-									Map<var>::ConstIterator cf = po->m_tbl.find(key);
-									if ( cf )
-									{
-										const var &tv = *cf.second;
-										state.stack.push( tv );
-										found = true;
-									}
-								}
-							}
-						}
-						if ( !found )
-						{
-							state.stack.push( o->m_tbl[key] );
-						}
+						state.stack.push( FindVar( o, key, state ) );
 					}
 				}
 				else

@@ -192,7 +192,7 @@ public:
 		return nullit;
 	}
 
-	ConstIterator find( unsigned int key ) const
+	ConstIterator cfind( unsigned int key ) const
 	{
 		ConstIterator nullit = { 0 };
 		int index = hashStart[key % 256];
