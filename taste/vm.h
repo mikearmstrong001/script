@@ -70,6 +70,20 @@ class GrowingArray
 	T *vector;
 	int allocatedSize;
 	int numEntries;
+
+	void EnsureAllocated( int allocsize )
+	{
+		int copycount = allocsize < numEntries ? allocsize : numEntries;
+		T *newvector = new T[allocsize];
+		for (int i=0; i<copycount; i++)
+		{
+			newvector[i] = vector[i];
+		}
+		delete []vector;
+		vector = newvector;
+		allocatedSize = allocsize;
+	}
+
 public:
 
 	GrowingArray() : vector(0), allocatedSize(0), numEntries(0)
@@ -80,11 +94,36 @@ public:
 	{
 	}
 
-	const T &operator[](int index) const;
-	T &operator[](int index);
+	const T &operator[](int index) const
+	{
+		cexception_error( (index >= 0 && index < allocatedSize), "bad array access" );
+		return vector[index];
+	}
+	T &operator[](int index)
+	{
+		cexception_error( (index >= 0 && index < allocatedSize), "bad array access" );
+		return vector[index];
+	}
 
-	int size() const;
-	void resize( int newsize );
+	int size() const
+	{
+		return numEntries;
+	}
+
+	void resize( int newsize )
+	{
+		EnsureAllocated( newsize );
+		numEntries = newsize;
+	}
+
+	void push_back( const T &i )
+	{
+		if ( numEntries >= allocatedSize )
+		{
+			EnsureAllocated( allocatedSize + 16 );
+		}
+		vector[numEntries++] = i;
+	}
 };
 
 template <class V>
@@ -92,6 +131,7 @@ class Map
 {
 	int hashStart[256];
 	GrowingArray<V> hashValue;
+	GrowingArray<int> hashKey;
 	GrowingArray<int> hashNext;
 public:
 
@@ -99,32 +139,98 @@ public:
 	{
 		V *second;
 
-		Iterator( V *o ) : second(o) {}
-
-		operator bool()
+		inline operator bool()
 		{
-			return second;
+			return second ? true : false;
+		}
+	};
+
+	struct ConstIterator
+	{
+		const V *second;
+
+		inline operator bool()
+		{
+			return second ? true : false;
 		}
 	};
 
 	Map()
 	{
-		memcpy( hashStart, -1, sizeof(hashStart) );
+		memset( hashStart, -1, sizeof(hashStart) );
 	}
 
 	~Map()
 	{
 	}
 
-	Iterator Find( unsigned int key ) const;
-	const V &Get( unsigned int key ) const;
-	V &Get( unsigned int key );
-	V &Add( unsigned int key );
-	V &FindOrAdd( unsigned int key );
+	V &add( unsigned int key )
+	{
+		unsigned int index = key % 256;
+		int entry = hashValue.size();
+		hashValue.push_back( V() );
+		hashKey.push_back( key );
+		hashNext.push_back( hashStart[index] );
+		hashStart[index] = entry;
+		return hashValue[entry];
+	}
 
-	void Set( unsigned int key, V &o );
-	//const V &operator[](int index) const;
-	//V &operator[](int index);
+	Iterator find( unsigned int key )
+	{
+		Iterator nullit = { 0 };
+		int index = hashStart[key % 256];
+		while ( index != -1 )
+		{
+			if ( hashKey[index] == key )
+			{
+				Iterator it;
+				it.second = &hashValue[index];
+				return it;
+			}
+			index = hashNext[index];
+		}
+		return nullit;
+	}
+
+	ConstIterator find( unsigned int key ) const
+	{
+		ConstIterator nullit = { 0 };
+		int index = hashStart[key % 256];
+		while ( index != -1 )
+		{
+			if ( hashKey[index] == key )
+			{
+				ConstIterator it;
+				it.second = &hashValue[index];
+				return it;
+			}
+			index = hashNext[index];
+		}
+		return nullit;
+	}
+
+	const V &operator[](unsigned int key) const
+	{
+		ConstIterator f = find(key);
+		if ( !f )
+		{
+			cexecption_error( "failed to find map entry" );
+		}
+		return *f.second;
+	}
+
+	V &operator[](unsigned int key)
+	{
+		Iterator f = find(key);
+		if ( !f )
+		{
+			return add( key );
+		}
+		else
+		{
+			return *f.second;
+		}
+	}
 };
 
 enum VARTYPE
@@ -171,7 +277,7 @@ struct object
 	object() : prototype(-1) {}
 };
 
-inline unsigned int Hash( const wchar_t *v )
+inline int Hash( const wchar_t *v )
 {
 	unsigned int h = 0x2901381;
 	while ( *v )
@@ -222,10 +328,6 @@ struct vmstate
 	FixedStack<int,1024> envStack;
 	FixedStack<int,32> pcStack;
 	Map<var> globals;
-//	std::vector<object> objects;
-//	std::vector<arrayvar<int>*> integerarrays;
-//	std::vector<arrayvar<float>*> floatingpointarrays;
-//	std::vector<arrayvar<int>*> objectarrays;
 	var rv;
 
 	var const &GetArg( int index ) const
@@ -257,4 +359,8 @@ struct vmstate
 		rv.f = v;
 	}
 };
+
+
+void RunVM( int const *ops, int numOps, int loc, vmstate &state );
+
 

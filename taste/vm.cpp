@@ -1,5 +1,6 @@
 #include "vm.h"
 #include <memory.h>
+#include <stdio.h>
 
 const char *opnames[] =
 {
@@ -53,6 +54,7 @@ bool testcfunc( vmstate &state )
 bool printffloat( vmstate &state )
 {
 	float f = state.GetArgAsFloat( -1 );
+	printf( "%f\n", f );
 	state.stack.pop(1);
 	return false;
 }
@@ -63,7 +65,7 @@ const var &FindVar( object const *top, int key, vmstate &state )
 	const object *o = top;
 	while ( o )
 	{
-		Map<var>::Iterator f = o->m_tbl.Find( key );
+		Map<var>::ConstIterator f = o->m_tbl.find( key );
 		if ( f )
 		{
 			return *f.second;
@@ -71,14 +73,18 @@ const var &FindVar( object const *top, int key, vmstate &state )
 		// not found check prototype
 		if ( o->prototype != -1 )
 		{
-			const var &po = state.globals.Get(o->prototype);
-			if ( po.type == OBJECT )
+			Map<var>::Iterator p = state.globals.find(o->prototype);
+			if ( p )
 			{
-				o = po.o;
-			}
-			else
-			{
-				o = 0;
+				const var &po = *p.second;
+				if ( po.type == OBJECT )
+				{
+					o = po.o;
+				}
+				else
+				{
+					o = 0;
+				}
 			}
 		}
 		else
@@ -86,7 +92,7 @@ const var &FindVar( object const *top, int key, vmstate &state )
 			o = 0;
 		}
 	}
-	cexception_error( "failed to find key" );
+	cexception_error("null var");
 	static var NULLVAR;
 	return NULLVAR;
 }
@@ -94,12 +100,12 @@ const var &FindVar( object const *top, int key, vmstate &state )
 void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 {
 	{
-	var &v = state.globals.Add(Hash(L"cfunc"));
+	var &v = state.globals[Hash(L"cfunc")];
 	v.type = CFUNCTION;
 	v.cfunc = testcfunc;
 	}
 	{
-	var &v = state.globals.Add(Hash(L"printffloat"));
+	var &v = state.globals[Hash(L"printffloat")];
 	v.type = CFUNCTION;
 	v.cfunc = printffloat;
 	}
@@ -193,8 +199,8 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				VARTYPE type = (VARTYPE)ops[pc++];
 				int index = ops[pc++];				
 				var &obj = state.stack.top(); // top but don't pop
-				cexception_error( obj.type == OBJECT, "type expected to be object" );
-				var &item = obj.o->m_tbl.Add(index);
+				cexception_error( obj.type == OBJECT, "var is not object" );
+				var &item = obj.o->m_tbl[index];
 
 				item.type = type;
 				if ( type == OBJECT )
@@ -227,9 +233,9 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int index = ops[pc++];				
 				int gindex = ops[pc++];				
 				var &obj = state.stack.top(); // top but don't pop
-				cexception_error( obj.type == OBJECT, "type expected to be object" );
-				var &item = state.globals.Add(gindex);
-				obj.o->m_tbl.Set(index, item);
+				cexception_error( obj.type == OBJECT, "var is not object" );
+				var &item = state.globals[gindex];
+				obj.o->m_tbl[index] = item;
 			}
 			break;
 		case OPC_MAKEVARG:
@@ -237,7 +243,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				VARTYPE type = (VARTYPE)ops[pc++];
 				int index = ops[pc++];
 				int prototype = ops[pc++];
-				var &item = state.globals.Add(index);
+				var &item = state.globals[index];
 				item.type = type;
 				if ( type == OBJECT )
 				{
@@ -298,14 +304,14 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					cexception_error( "unexpected type for call" );
+					cexception_error("bad type");
 				}
 			}
 			break;
 		case OPC_CALLG:
 			{
 				int index = ops[pc++];
-				const var &val = state.globals.Get(index);
+				const var &val = state.globals[index];
 				if ( val.type == CFUNCTION )
 				{
 					state.envStack.push( state.stack.size() );
@@ -325,7 +331,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					cexception_error( "unexpected type for call" );
+					cexception_error("bad type");
 				}
 			}
 			break;
@@ -486,7 +492,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			{
 				int dest = ops[pc++];
 				var v0 = state.stack.top(); state.stack.pop();
-				cexception_error( v0.type == INTEGER, "type expected to be integer" );
+				cexception_error( v0.type == INTEGER, "var is not integer" );
 				if ( !v0.i )
 					pc = dest;
 			}
@@ -521,17 +527,17 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					{
 						int key = ops[pc++];
 
-						int f = o->m_tbl.Find(key);
-						if ( f == -1 )
+						Map<var>::Iterator f = o->m_tbl.find(key);
+						if ( !f )
 						{
-							var &tv = o->m_tbl.Add(key);
+							var &tv = o->m_tbl.add(key);
 							tv.type = OBJECT;
 							tv.o = new object;
 							o = tv.o;
 						}
 						else
 						{
-							var &tv = o->m_tbl.FindOrAdd(f);
+							var &tv = *f.second;
 							if ( tv.type == OBJECT )
 							{
 								o = tv.o;
@@ -546,7 +552,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					}
 					{
 						int key = ops[pc++];
-						o->m_tbl.Set(key, v0);
+						o->m_tbl[key] = v0;
 					}
 				}
 				else
@@ -567,7 +573,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					}
 					else
 					{
-						cexception_error( "bad type" );
+						cexception_error("bad type");
 					}
 				}
 			}
@@ -590,7 +596,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 						}
 						else
 						{
-							cexception_error( "bad type" );
+							cexception_error("bad type");
 						}
 #if 0
 						std::map<int,var>::iterator f = o->m_tbl.find(key);
@@ -642,20 +648,21 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					}
 					{
 						int key = ops[pc++];
-						int f = o->m_tbl.Find(key);
+						Map<var>::Iterator f = o->m_tbl.find(key);
 						bool found = false;
-						if ( f == -1 )
+						if ( !f )
 						{
 							if ( o->prototype != -1 )
 							{
-								const var &pv = state.globals.Get(o->prototype);
+								var &pv = state.globals[o->prototype];
 								if ( pv.type == OBJECT )
 								{
 									const object *po = pv.o;
-									Map<var>::Iterator cf = po->m_tbl.Find(key);
+									Map<var>::ConstIterator cf = po->m_tbl.find(key);
 									if ( cf )
 									{
-										state.stack.push( *cf.second );
+										const var &tv = *cf.second;
+										state.stack.push( tv );
 										found = true;
 									}
 								}
@@ -663,7 +670,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 						}
 						if ( !found )
 						{
-							state.stack.push( o->m_tbl.FindOrAdd(key) );
+							state.stack.push( o->m_tbl[key] );
 						}
 					}
 				}
@@ -683,13 +690,13 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					object *o = item.o;
 					if ( o->prototype != -1 )
 					{
-						const var &proto_item = state.globals.Get(o->prototype);
+						const var &proto_item = state.globals[o->prototype];
 						if ( proto_item.type == OBJECT )
 						{
 							o = proto_item.o;
 							if ( o->prototype != -1 )
 							{
-								const var &super_proto_item = state.globals.Get(o->prototype);
+								const var &super_proto_item = state.globals[o->prototype];
 								if ( super_proto_item.type == OBJECT )
 								{
 									o = super_proto_item.o;
@@ -700,17 +707,17 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					for (int i=0; i<entries-1; i++)
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.Find(key);
+						Map<var>::Iterator f = o->m_tbl.find(key);
 						if ( f )
 						{
 							bool found = false;
 							if ( o->prototype != -1 )
 							{
-								const var &pv = state.globals.Get(o->prototype);
+								var &pv = state.globals[o->prototype];
 								if ( pv.type == OBJECT )
 								{
 									const object *po = pv.o;
-									Map<var>::Iterator cf = po->m_tbl.Find(key);
+									Map<var>::ConstIterator cf = po->m_tbl.find(key);
 									if ( cf )
 									{
 										const var &tv = *cf.second;
@@ -725,7 +732,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 							
 							if ( !found )
 							{
-								var &tv = o->m_tbl.FindOrAdd(key);
+								var &tv = o->m_tbl[key];
 								tv.type = OBJECT;
 								tv.o = new object;
 								o = tv.o;
@@ -748,17 +755,17 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					}
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.Find(key);
+						Map<var>::Iterator f = o->m_tbl.find(key);
 						bool found = false;
 						if ( f )
 						{
 							if ( o->prototype != -1 )
 							{
-								const var &pv = state.globals.Get(o->prototype);
+								var &pv = state.globals[o->prototype];
 								if ( pv.type == OBJECT )
 								{
 									const object *po = pv.o;
-									Map<var>::Iterator cf = po->m_tbl.Find(key);
+									Map<var>::ConstIterator cf = po->m_tbl.find(key);
 									if ( cf )
 									{
 										const var &tv = *cf.second;
@@ -770,13 +777,13 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 						}
 						if ( !found )
 						{
-							state.stack.push( o->m_tbl.FindOrAdd(key) );
+							state.stack.push( o->m_tbl[key] );
 						}
 					}
 				}
 				else
 				{
-					cexception_error( "eek" );
+					cexception_error("err");
 				}
 			}
 			break;
@@ -786,17 +793,17 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
-				var &item = state.globals.Get(index);
+				var &item = state.globals[index];
 				if ( item.type == OBJECT && entries )
 				{
 					object *o = item.o;
 					for (int i=0; i<entries-1; i++)
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.Find(key);
+						Map<var>::Iterator f = o->m_tbl.find(key);
 						if ( f )
 						{
-							var &tv = o->m_tbl.Add(key);
+							var &tv = o->m_tbl[key];
 							tv.type = OBJECT;
 							tv.o = new object;
 							o = tv.o;
@@ -818,7 +825,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					}
 					{
 						int key = ops[pc++];
-						o->m_tbl.Set(key, v0);
+						o->m_tbl[key] = v0;
 					}
 				}
 				else
@@ -839,7 +846,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					}
 					else
 					{
-						cexception_error( "unknown type" );
+						cexception_error("err");
 					}
 				}
 			}
@@ -848,24 +855,24 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			{
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
-				const var &item = state.globals.Get(index);
+				var &item = state.globals[index];
 				if ( item.type == OBJECT && entries )
 				{
 					object *o = item.o;
 					for (int i=0; i<entries-1; i++)
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.Find(key);
+						Map<var>::Iterator f = o->m_tbl.find(key);
 						if ( f )
 						{
 							bool found = false;
 							if ( o->prototype != -1 )
 							{
-								var &pv = state.globals.Get(o->prototype);
+								var &pv = state.globals[o->prototype];
 								if ( pv.type == OBJECT )
 								{
 									const object *po = pv.o;
-									Map<var>::Iterator cf = po->m_tbl.Find(key);
+									Map<var>::ConstIterator cf = po->m_tbl.find(key);
 									if ( cf )
 									{
 										const var &tv = *cf.second;
@@ -880,7 +887,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 							
 							if ( !found )
 							{
-								var &tv = o->m_tbl.FindOrAdd(key);
+								var &tv = o->m_tbl[key];
 								tv.type = OBJECT;
 								tv.o = new object;
 								o = tv.o;
@@ -903,17 +910,17 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					}
 					{
 						int key = ops[pc++];
-						Map<var>::Iterator f = o->m_tbl.Find(key);
+						Map<var>::Iterator f = o->m_tbl.find(key);
 						bool found = false;
 						if ( f )
 						{
 							if ( o->prototype != -1 )
 							{
-								const var &pv = state.globals.Get(o->prototype);
+								var &pv = state.globals[o->prototype];
 								if ( pv.type == OBJECT )
 								{
 									const object *po = pv.o;
-									Map<var>::Iterator cf = po->m_tbl.Find(key);
+									Map<var>::ConstIterator cf = po->m_tbl.find(key);
 									if ( cf )
 									{
 										const var &tv = *cf.second;
@@ -925,7 +932,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 						}
 						if ( !found )
 						{
-							state.stack.push( o->m_tbl.FindOrAdd(key) );
+							state.stack.push( o->m_tbl[key] );
 						}
 					}
 				}
@@ -949,7 +956,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				var v0 = state.stack.top(); state.stack.pop();
 				int lookup = ops[pc++];
 				int index = ops[pc++];
-				var &v = state.globals.Get(lookup);
+				var &v = state.globals[lookup];
 				if ( v.type == INTEGERARRAY )
 				{
 					if ( (int)v.iArrayPtr->m_items.size() <= index )
@@ -978,7 +985,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					cexception_error( "bad type" );
+					cexception_error( "err" );
 				}
 			}
 			break;
@@ -1016,7 +1023,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					assert( 0 );
+					cexception_error( "err" );
 				}
 			}
 			break;
@@ -1059,7 +1066,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					assert( 0 );
+					cexception_error( "err" );
 				}
 			}
 			break;
@@ -1102,12 +1109,12 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					assert( 0 );
+					cexception_error( "err" );
 				}
 			}
 			break;
 		default:
-			assert( 0 );
+			cexception_error( "err" );
 			break;
 		}
 	}
