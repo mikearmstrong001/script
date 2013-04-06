@@ -167,6 +167,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 	while ( !done )
 	{
 		int op = ops[pc++];
+		cexception_error( op >= 0 && op < OPC_MAX, "bad opcode" );
 		const char *opname = opnames[op];
 		switch(op)
 		{

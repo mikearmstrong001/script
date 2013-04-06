@@ -38,6 +38,8 @@ enum OPCODES
 	OPC_POPITEMARRAY,
 	OPC_POPITEMGARRAY,
 	OPC_PUSHSUPER,
+
+	OPC_MAX
 };
 
 extern const char *opnames[];
