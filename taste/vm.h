@@ -364,5 +364,6 @@ struct vmstate
 
 
 void RunVM( int const *ops, int numOps, int loc, vmstate &state );
+bool RunVMExp( int const *ops, int numOps, int loc, vmstate &state );
 
 

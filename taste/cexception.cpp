@@ -1,11 +1,30 @@
 #include "cexception.h"
 #include <assert.h>
+#include <string.h>
 
-extern void cexception_error( const char *why )
+extern SetJmpChain_s *g_cexception_chain = 0;
+
+void cexception_error( const char *why )
 {
-	assert( 0 );
+	strncpy( g_cexception_chain->errortxt, why, sizeof(g_cexception_chain->errortxt) );
+	longjmp( g_cexception_chain->env, -1 );
 }
-extern void cexception_error( bool ok, const char *why )
+void cexception_error( bool ok, const char *why )
 {
-	assert(ok);
+	if ( !ok )
+	{
+		cexception_error( why );
+	}
+}
+
+void cexception_push( SetJmpChain_s  *chain )
+{
+	chain->next = g_cexception_chain;
+	g_cexception_chain = chain;
+}
+
+void cexception_pop()
+{
+	assert( g_cexception_chain );
+	g_cexception_chain = g_cexception_chain->next;
 }

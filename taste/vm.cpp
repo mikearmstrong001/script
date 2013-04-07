@@ -168,6 +168,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 	{
 		int op = ops[pc++];
 		cexception_error( op >= 0 && op < OPC_MAX, "bad opcode" );
+		cexception_error( "test" );
 		const char *opname = opnames[op];
 		switch(op)
 		{
@@ -870,5 +871,22 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			cexception_error( "err" );
 			break;
 		}
+	}
+}
+
+bool RunVMExp( int const *ops, int numOps, int loc, vmstate &state )
+{
+	SetJmpChain_s jmpchain;
+	cexception_push( &jmpchain );
+	if ( setjmp( jmpchain.env ) == 0 )
+	{
+		RunVM( ops, numOps, loc, state );
+		cexception_pop();
+		return true;
+	}
+	else
+	{
+		cexception_pop();
+		return false;
 	}
 }

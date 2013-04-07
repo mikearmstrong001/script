@@ -904,8 +904,8 @@ public:
 			state.globals[hash].i = oplist.size();
 			m_procs[i]->Generate(oplist,frame);
 		}
-		RunVM( &oplist[0], oplist.size(), 0, state );
-		RunVM( &oplist[0], oplist.size(), main, state );
+		RunVMExp( &oplist[0], oplist.size(), 0, state );
+		RunVMExp( &oplist[0], oplist.size(), main, state );
 		frame.PopFrame();
 	}
 };
