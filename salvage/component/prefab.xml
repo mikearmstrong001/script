@@ -1,0 +1,21 @@
+<Scene>
+  <GameObject>
+    <Name>blah1</Name>
+    <Component type="MeshModel">
+      <Model>testdata.obj</Model>
+    </Component>
+    <Component type="Transform">
+      <local>0 0 0</local>
+    </Component>
+  </GameObject>
+  <GameObject>
+    <Name>blah2</Name>
+    <Tag>Player</Tag>
+    <Component type="MeshModel">
+      <Model>testdata.obj</Model>
+    </Component>
+    <Component type="Transform">
+      <local>10 0 0</local>
+    </Component>
+  </GameObject>
+</Scene>
