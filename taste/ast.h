@@ -6,7 +6,18 @@
 #include <map>
 #include "vm.h"
 
-
+enum BINOP
+{
+	BINOP_ADD,
+	BINOP_SUB,
+	BINOP_MUL,
+	BINOP_DIV,
+	BINOP_EQU,
+	BINOP_LSS,
+	BINOP_GTR,
+	BINOP_LEQ,
+	BINOP_GEQ,
+};
 
 struct DeclInfo
 {
@@ -388,18 +399,53 @@ public:
 	virtual void Generate( std::vector<int> &oplist, vmstate &state );
 };
 
+class ProcDefDeclAst
+{
+	int m_returnType;
+	std::wstring m_name;
+	DeclVec m_declaration;
+public:
+
+	void SetReturnType( int type ) { m_returnType = type; }
+	void SetName( const wchar_t *name ) { m_name = name; }
+	void SetDeclaration( const DeclVec &v ) { m_declaration = v; }
+
+	std::wstring const &GetName() { return m_name; }
+
+	void PrependDeclInfo( const DeclInfo &info ) { m_declaration.insert( m_declaration.begin(), info ); }
+};
+
+
+class InterfaceDecl
+{
+	std::wstring m_name;
+	std::wstring m_extends;
+	std::vector< ProcDefDeclAst* > m_procs;
+public:
+
+	InterfaceDecl( const wchar_t *name ) : m_name(name) {}
+
+	void SetExtends( const wchar_t *ex ) { m_extends = ex; }
+	void AddProcDecl( ProcDefDeclAst *p ) { m_procs.push_back(p); }
+
+	std::wstring const &GetName() { return m_name; }
+	std::wstring const &GetExtends() { return m_extends; }
+};
+
 class Package
 {
 	std::wstring m_name;
 	std::vector< VarDeclAst* > m_varDecls;
 	std::vector< ProcDeclAst* > m_procs;
 	std::vector< DefDecl* > m_defs;
+	std::vector< InterfaceDecl* > m_interfaces;
 
 public:
 
 	Package( const wchar_t *name ) : m_name(name) {}
 
 	void AddDefDecl( DefDecl *v ) { m_defs.push_back(v); }
+	void AddInterfaceDecl( InterfaceDecl *v ) { m_interfaces.push_back(v); }
 	void AddVarDecl( VarDeclAst *v ) { m_varDecls.push_back(v); }
 	void AddProcDecl( ProcDeclAst *p ) { m_procs.push_back(p); }
 

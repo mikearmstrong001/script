@@ -88,15 +88,6 @@ int // operators
 
 	int // object kinds
 	  var, proc;
-
-	int // opcodes
-	  ADD,  SUB,   MUL,   DIV,   EQU,  LSS, GTR, NEG,
-	  LOAD, STO,   CONST,
-	  CALL, RET,   ENTER, LEAVE,
-	  JMP,  FJMP,
-	  CONSTF, ADDF, SUBF, MULF, DIVF, NEGF,
-	  GETTABLE, ADDO, SUBO, MULO, DIVO, NEGO, LOADOBJECT, STOOBJECT,
-	  INITINT, INITFP, INITOBJ;
 	
 	Package		  *package;
 
@@ -108,16 +99,6 @@ int // operators
 		plus = 0; minus = 1; times = 2; slash = 3; equ = 4; lss = 5; gtr = 6; // operators
 		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; object = 4; voidtype = 5; userptr = 6;// types
 		var = 0; proc = 1; // object kinds
-
-		// opcodes
-		ADD  =  0; SUB   =  1; MUL   =  2; DIV   =  3; EQU   =  4; LSS = 5; GTR = 6; NEG = 7;
-		LOAD =  8; STO   = 10; CONST = 12;
-		CALL = 13; RET   = 14; ENTER = 15; LEAVE = 16;
-		JMP  = 17; FJMP  = 18;
-		CONSTF = 19; ADDF = 20; SUBF = 21; MULF =  22; DIVF	 = 23; NEGF = 24;
-		GETTABLE = 25; ADDO = 26; SUBO = 27; MULO =  28; DIVO	 = 29; NEGO = 30; LOADOBJECT = 31; STOOBJECT = 32;
-		INITINT = 33; INITFP = 34; INITOBJ = 35;
-
 		package = NULL;
 	}
 
@@ -150,6 +131,8 @@ int // operators
 	void Stat(AstBase *&stat);
 	void Term(AstBase* &term);
 	void Def(DefDecl *&def);
+	void ProcDefDecl(ProcDefDeclAst* &procDecl);
+	void Interface(InterfaceDecl *&def);
 	void Taste();
 
 	void Parse();

@@ -4,6 +4,11 @@ package Test {
 	var float[] items1;
 	var object[] items2;
 
+	interface CanCreate
+	{
+		function void onCreate( object createParams );
+	};
+
 	def foo
 	{
 		var float[] x;
