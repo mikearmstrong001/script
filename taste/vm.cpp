@@ -40,7 +40,69 @@ const char *opnames[] =
 	"OPC_PUSHSUPER",
 };
 
+static bool HasVar( object const *top, int key, vmstate &state )
+{
+	// first check object;
+	const object *o = top;
+	while ( o )
+	{
+		Map<var>::ConstIterator f = o->m_tbl.cfind( key );
+		if ( f )
+		{
+			return true;
+		}
+		// not found check prototype
+		if ( o->prototype != -1 )
+		{
+			Map<var>::ConstIterator p = state.globals.cfind(o->prototype);
+			if ( p )
+			{
+				const var &po = *p.second;
+				if ( po.type == OBJECT )
+				{
+					o = po.o;
+				}
+				else
+				{
+					o = 0;
+				}
+			}
+		}
+		else
+		{
+			o = 0;
+		}
+	}
+	return false;
+}
 
+
+static bool testimplements( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	const var &arg1 = state.GetArg( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == OBJECT, "Arg0 expected to be of type OBJECT" );
+	CEXCEPTION_ERROR_CONDITION( arg1.type == INTEGER, "Arg1 expected to be of type INTEGER" );
+
+	int result = 1;
+
+	Map<vminterface>::ConstIterator cit = state.ifaces.cfind( arg1.i );
+	CEXCEPTION_ERROR_CONDITION( cit, "Unknown interface" );
+	for (int i=0; i<cit.second->interfaceFunctions.size(); i++)
+	{
+		int key = cit.second->interfaceFunctions[i];
+		if ( !HasVar( arg0.o, key, state ) )
+		{
+			result = 0;
+			break;
+		}
+	}
+
+	state.SetReturn( result );
+	return true;
+}
 
 bool testcfunc( vmstate &state )
 {
@@ -92,7 +154,7 @@ static const var &FindVar( object const *top, int key, vmstate &state )
 			o = 0;
 		}
 	}
-	cexception_error("null var");
+	CEXCEPTION_ERROR("null var");
 	static var NULLVAR;
 	return NULLVAR;
 }
@@ -140,7 +202,7 @@ static void PushEntry( const int *ops, int &pc, object *o, int entries, vmstate 
 		}
 		else
 		{
-			cexception_error("bad type");
+			CEXCEPTION_ERROR("bad type");
 		}
 	}
 	int key = ops[pc++];
@@ -159,6 +221,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 	v.type = CFUNCTION;
 	v.cfunc = printffloat;
 	}
+	{
+	var &v = state.globals[Hash(L"_implements")];
+	v.type = CFUNCTION;
+	v.cfunc = testimplements;
+	}
 	int pc = loc;
 	bool done = false;
 	state.envStack.reset( 0 );
@@ -167,7 +234,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 	while ( !done )
 	{
 		int op = ops[pc++];
-		cexception_error( op >= 0 && op < OPC_MAX, "bad opcode" );
+		CEXCEPTION_ERROR_CONDITION( op >= 0 && op < OPC_MAX, "bad opcode" );
 		const char *opname = opnames[op];
 		switch(op)
 		{
@@ -250,7 +317,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				VARTYPE type = (VARTYPE)ops[pc++];
 				int index = ops[pc++];				
 				var &obj = state.stack.top(); // top but don't pop
-				cexception_error( obj.type == OBJECT, "var is not object" );
+				CEXCEPTION_ERROR_CONDITION( obj.type == OBJECT, "var is not object" );
 				var &item = obj.o->m_tbl[index];
 
 				item.type = type;
@@ -284,7 +351,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int index = ops[pc++];				
 				int gindex = ops[pc++];				
 				var &obj = state.stack.top(); // top but don't pop
-				cexception_error( obj.type == OBJECT, "var is not object" );
+				CEXCEPTION_ERROR_CONDITION( obj.type == OBJECT, "var is not object" );
 				var &item = state.globals[gindex];
 				obj.o->m_tbl[index] = item;
 			}
@@ -355,7 +422,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					cexception_error("bad type");
+					CEXCEPTION_ERROR("bad type");
 				}
 			}
 			break;
@@ -382,7 +449,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					cexception_error("bad type");
+					CEXCEPTION_ERROR("bad type");
 				}
 			}
 			break;
@@ -543,7 +610,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			{
 				int dest = ops[pc++];
 				var v0 = state.stack.top(); state.stack.pop();
-				cexception_error( v0.type == INTEGER, "var is not integer" );
+				CEXCEPTION_ERROR_CONDITION( v0.type == INTEGER, "var is not integer" );
 				if ( !v0.i )
 					pc = dest;
 			}
@@ -596,7 +663,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					}
 					else
 					{
-						cexception_error("bad type");
+						CEXCEPTION_ERROR("bad type");
 					}
 				}
 			}
@@ -625,20 +692,20 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( item.type == OBJECT && entries )
 				{
 					object *o = item.o;
-					cexception_error( o->prototype != -1, "object should have prototype" );
+					CEXCEPTION_ERROR_CONDITION( o->prototype != -1, "object should have prototype" );
 					const var &proto_item = state.globals[o->prototype];
-					cexception_error( proto_item.type == OBJECT, "prototype is not object" );
+					CEXCEPTION_ERROR_CONDITION( proto_item.type == OBJECT, "prototype is not object" );
 					o = proto_item.o;
-					cexception_error( o->prototype != -1, "prototype should have prototype" );
+					CEXCEPTION_ERROR_CONDITION( o->prototype != -1, "prototype should have prototype" );
 					const var &super_proto_item = state.globals[o->prototype];
-					cexception_error( super_proto_item.type == OBJECT, "super prototype is not object" );
+					CEXCEPTION_ERROR_CONDITION( super_proto_item.type == OBJECT, "super prototype is not object" );
 					o = super_proto_item.o;
 
 					PushEntry( ops, pc, o, entries-1, state );
 				}
 				else
 				{
-					cexception_error("err");
+					CEXCEPTION_ERROR("err");
 				}
 			}
 			break;
@@ -674,7 +741,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					}
 					else
 					{
-						cexception_error("err");
+						CEXCEPTION_ERROR("err");
 					}
 				}
 			}
@@ -738,7 +805,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					cexception_error( "err" );
+					CEXCEPTION_ERROR( "err" );
 				}
 			}
 			break;
@@ -776,7 +843,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					cexception_error( "err" );
+					CEXCEPTION_ERROR( "err" );
 				}
 			}
 			break;
@@ -819,7 +886,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					cexception_error( "err" );
+					CEXCEPTION_ERROR( "err" );
 				}
 			}
 			break;
@@ -862,12 +929,12 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 				else
 				{
-					cexception_error( "err" );
+					CEXCEPTION_ERROR( "err" );
 				}
 			}
 			break;
 		default:
-			cexception_error( "err" );
+			CEXCEPTION_ERROR( "err" );
 			break;
 		}
 	}

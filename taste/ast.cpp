@@ -459,14 +459,18 @@ void DefDecl::Generate( std::vector<int> &oplist, vmstate &state )
 	frame.PushFrame();
 
 	{
-		printf( "%S:~type_creator\n", m_name.c_str());
 		int hash = Hash( (m_name + std::wstring(L":~type_creator")).c_str() );
+		printf( "%S:~type_creator %d\n", m_name.c_str(), hash);
 		state.globals[hash].type = VMFUNCTION;
 		state.globals[hash].i = oplist.size();
 		for ( unsigned int i=0; i<m_procs.size(); i++)
 		{
 			int function_hash = Hash( (m_name + L":" + m_procs[i]->GetName()).c_str() );
 			AddOp( oplist, OPC_CONSTRUCTVARFROMGLOBAL, Hash(m_procs[i]->GetName().c_str()), function_hash );
+		}
+		{
+			int function_hash = Hash( L"_implements" );
+			AddOp( oplist, OPC_CONSTRUCTVARFROMGLOBAL, Hash( L"implements" ), function_hash );
 		}
 		AddOp( oplist, OPC_POP, 1 );
 		AddOp( oplist, OPC_RET );
@@ -523,6 +527,19 @@ void Package::Generate()
 	for ( unsigned int i=0; i<m_varDecls.size(); i++)
 	{
 		m_varDecls[i]->Generate(oplist,frame);
+	}
+	for ( unsigned int i=0; i<m_interfaces.size(); i++)
+	{
+		AddOp( oplist, OPC_MAKEVARG, INTEGER, Hash( m_interfaces[i]->GetName().c_str() ), 0 );
+		AddOp( oplist, OPC_PUSHI, Hash( m_interfaces[i]->GetName().c_str() ) );
+		AddOp( oplist, OPC_POPITEMG, 1, Hash( m_interfaces[i]->GetName().c_str() ) );
+
+		vminterface &iface = state.ifaces.add( Hash( m_interfaces[i]->GetName().c_str() ) );
+		std::vector< ProcDefDeclAst* > const &procs = m_interfaces[i]->GetProcs();
+		for ( unsigned int j=0; j<procs.size(); j++)
+		{
+			iface.interfaceFunctions.push_back( Hash( procs[j]->GetName().c_str() ) );
+		}
 	}
 	AddOp( oplist, OPC_RET );
 

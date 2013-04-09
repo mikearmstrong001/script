@@ -430,6 +430,8 @@ public:
 
 	std::wstring const &GetName() { return m_name; }
 	std::wstring const &GetExtends() { return m_extends; }
+
+	std::vector< ProcDefDeclAst* > const &GetProcs() { return m_procs; }
 };
 
 class Package

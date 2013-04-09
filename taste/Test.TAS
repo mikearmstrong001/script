@@ -6,7 +6,12 @@ package Test {
 
 	interface CanCreate
 	{
-		function void onCreate( object createParams );
+		function void onCreate( object self, object createParams );
+	};
+
+	interface CanUpdate
+	{
+		function void onUpdate( object self, float dt );
 	};
 
 	def foo
@@ -35,7 +40,7 @@ package Test {
 			self.dir.y = createParams.dir.y;
 		}
 
-		function void onUpdate( object self, float dt )
+		function void onUpdate( float dt )
 		{
 			self.pos.x = self.pos.x + self.dir.x * dt;
 			self.pos.y = self.pos.y + self.dir.y * dt;
@@ -64,6 +69,8 @@ package Test {
 	{
 		var object t = new bah;
 		var object o;
+		var int c = t.implements(t,CanCreate);
+		items2[0] = t;
 		o.pos.x = 0.0;
 		o.pos.y = 0.0;
 		o.dir.x = 0.0;
@@ -80,7 +87,10 @@ package Test {
 		var int i = 200;
 		while ( i > 0 )
 		{
-			t.onUpdate( o, 0.1 );
+			if ( t.implements( t, CanUpdate ) )
+			{
+				t.onUpdate( t, 0.1 );
+			}
 			i = i - 1;
 		}
 	}

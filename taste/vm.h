@@ -98,12 +98,12 @@ public:
 
 	const T &operator[](int index) const
 	{
-		cexception_error( (index >= 0 && index < allocatedSize), "bad array access" );
+		CEXCEPTION_ERROR_CONDITION( (index >= 0 && index < allocatedSize), "bad array access" );
 		return vector[index];
 	}
 	T &operator[](int index)
 	{
-		cexception_error( (index >= 0 && index < allocatedSize), "bad array access" );
+		CEXCEPTION_ERROR_CONDITION( (index >= 0 && index < allocatedSize), "bad array access" );
 		return vector[index];
 	}
 
@@ -322,7 +322,10 @@ inline VARTYPE CombinedType( VARTYPE t0, VARTYPE t1 )
 	return ( t0 > t1 ) ? t0 : t1;
 }
 
-
+struct vminterface
+{
+	GrowingArray<int> interfaceFunctions;
+};
 
 struct vmstate
 {
@@ -330,6 +333,7 @@ struct vmstate
 	FixedStack<int,1024> envStack;
 	FixedStack<int,32> pcStack;
 	Map<var> globals;
+	Map<vminterface> ifaces;
 	var rv;
 
 	var const &GetArg( int index ) const
