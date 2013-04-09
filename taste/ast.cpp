@@ -219,7 +219,7 @@ void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 		if ( !m_prototype.empty() )
 		{
 			AddOp( oplist, OPC_PUSHITEM, 1, index );
-			AddOp( oplist, OPC_CALLG, Hash( (m_prototype + L"~:creator").c_str() ) );
+			AddOp( oplist, OPC_CALLG, Hash( (m_prototype + L":~creator").c_str() ) );
 			//AddOp( oplist, OPC_POP, 1 );
 		}
 	}
@@ -463,6 +463,11 @@ void DefDecl::Generate( std::vector<int> &oplist, vmstate &state )
 		printf( "%S:~type_creator %d\n", m_name.c_str(), hash);
 		state.globals[hash].type = VMFUNCTION;
 		state.globals[hash].i = oplist.size();
+		for ( unsigned int i=0; i<m_embeds.size(); i++)
+		{
+			AddOp( oplist, OPC_PUSHTOP );
+			AddOp( oplist, OPC_CALLG, Hash( (m_embeds[i]->GetName() + std::wstring(L":~type_creator")).c_str() ) );
+		}
 		for ( unsigned int i=0; i<m_procs.size(); i++)
 		{
 			int function_hash = Hash( (m_name + L":" + m_procs[i]->GetName()).c_str() );
@@ -477,15 +482,19 @@ void DefDecl::Generate( std::vector<int> &oplist, vmstate &state )
 	}
 
 	{
-		printf( "%S:~creator\n", m_name.c_str());
 		int hash = Hash( (m_name + std::wstring(L":~creator")).c_str() );
+		printf( "%S:~creator %d\n", m_name.c_str(), hash);
 		state.globals[hash].type = VMFUNCTION;
 		state.globals[hash].i = oplist.size();
 		if ( !m_extends.empty() )
 		{
 			AddOp( oplist, OPC_PUSHTOP );
 			AddOp( oplist, OPC_CALLG, Hash( (m_extends + std::wstring(L":~creator")).c_str() ) );
-			//AddOp( oplist, OPC_POP, 1 );
+		}
+		for ( unsigned int i=0; i<m_embeds.size(); i++)
+		{
+			AddOp( oplist, OPC_PUSHTOP );
+			AddOp( oplist, OPC_CALLG, Hash( (m_embeds[i]->GetName() + std::wstring(L":~creator")).c_str() ) );
 		}
 		for ( unsigned int i=0; i<m_varDecls.size(); i++)
 		{

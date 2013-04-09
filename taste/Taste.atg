@@ -408,7 +408,14 @@ Stat<AstBase *&stat>			(. VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *su
 	)
 	.
 
-Def<DefDecl *&def>				(. VarDeclAst *varDecl; ProcDeclAst *procDecl; .)
+EmbedDecl<EmbedDeclAst *&embed>
+=
+	"embed"
+	ident						(. embed = new EmbedDeclAst( t->val ); .)
+	";"
+	.
+
+Def<DefDecl *&def>				(. VarDeclAst *varDecl; ProcDeclAst *procDecl; EmbedDeclAst *embedDecl; .)
 =
 	"def"
 	ident							(. def = new DefDecl( t->val ); .)
@@ -421,6 +428,8 @@ Def<DefDecl *&def>				(. VarDeclAst *varDecl; ProcDeclAst *procDecl; .)
 	'{'
 		{
 			VarDecl<varDecl>		(. def->AddVarDecl( varDecl ); .)
+			| 
+			EmbedDecl<embedDecl>	(. def->AddEmbedDecl( embedDecl ); .)
 			| 
 			ProcDecl<procDecl>		(. def->AddProcDecl( procDecl ); .)
 		}
@@ -446,12 +455,6 @@ Interface<InterfaceDecl *&def>				(. ProcDefDeclAst *procDecl; .)
 =
 	"interface"
 	ident							(. def = new InterfaceDecl( t->val ); .)
-	(
-		[
-			"extends"
-			ident					(. def->SetExtends( t->val ); .)
-		]
-	)
 	'{'
 		{
 			ProcDefDecl<procDecl>		(. def->AddProcDecl( procDecl ); .)

@@ -130,6 +130,7 @@ int // operators
 	void ProcDecl(ProcDeclAst* &procDecl);
 	void Stat(AstBase *&stat);
 	void Term(AstBase* &term);
+	void EmbedDecl(EmbedDeclAst *&embed);
 	void Def(DefDecl *&def);
 	void ProcDefDecl(ProcDefDeclAst* &procDecl);
 	void Interface(InterfaceDecl *&def);

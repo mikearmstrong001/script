@@ -281,10 +281,10 @@ struct object
 
 inline int Hash( const wchar_t *v )
 {
-	unsigned int h = 0x2901381;
+	unsigned int h = 2166136261;
 	while ( *v )
 	{
-		h *= (*v) + 101283;
+		h = (16777619 * h) ^ (*v);
 		v++;
 	}
 	return h;

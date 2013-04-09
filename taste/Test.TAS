@@ -25,15 +25,16 @@ package Test {
 		}
 	};
 
-	def bah extends foo
+	def bah
 	{
+		embed foo;
 		var int a;
 		var int b;
 		var float c;
 
 		function void onCreate( object createParams )
 		{
-			super.onCreate( self, createParams );
+			//super.onCreate( self, createParams );
 			self.pos.x = createParams.pos.x;
 			self.pos.y = createParams.pos.y;
 			self.dir.x = createParams.dir.x;

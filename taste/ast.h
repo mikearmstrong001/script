@@ -379,12 +379,22 @@ public:
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
 };
 
+class EmbedDeclAst
+{
+	std::wstring m_name;
+public:
+	EmbedDeclAst( const wchar_t *name ) : m_name(name) {}
+
+	std::wstring const &GetName() { return m_name; }
+};
+
 class DefDecl
 {
 	std::wstring m_name;
 	std::wstring m_extends;
 	std::vector< VarDeclAst* > m_varDecls;
 	std::vector< ProcDeclAst* > m_procs;
+	std::vector< EmbedDeclAst* > m_embeds;
 public:
 
 	DefDecl( const wchar_t *name ) : m_name(name) {}
@@ -392,6 +402,7 @@ public:
 	void SetExtends( const wchar_t *ex ) { m_extends = ex; }
 	void AddVarDecl( VarDeclAst *v ) { m_varDecls.push_back(v); }
 	void AddProcDecl( ProcDeclAst *p ) { m_procs.push_back(p); }
+	void AddEmbedDecl( EmbedDeclAst *p ) { m_embeds.push_back(p); }
 
 	std::wstring const &GetName() { return m_name; }
 	std::wstring const &GetExtends() { return m_extends; }
