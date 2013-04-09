@@ -76,6 +76,80 @@ static bool HasVar( object const *top, int key, vmstate &state )
 	return false;
 }
 
+static bool pushbackObject( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	const var &arg1 = state.GetArg( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == OBJECTARRAY && arg1.type == OBJECT, "Expecting Object in builtin array pushback" );
+
+	arg0.oArrayPtr->m_items.push_back( arg1.o );
+
+	return false;
+}
+
+static bool pushbackFloatingPoint( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	const var &arg1 = state.GetArg( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == FLOATINGPOINTARRAY && arg1.type == FLOATINGPOINT, "Expecting FloatingPoint in builtin array pushback" );
+
+	arg0.fArrayPtr->m_items.push_back( arg1.f );
+
+	return false;
+}
+
+static bool pushbackInteger( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	const var &arg1 = state.GetArg( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == INTEGERARRAY && arg1.type == INTEGER, "Expecting Integer in builtin array pushback" );
+
+	arg0.iArrayPtr->m_items.push_back( arg1.i );
+
+	return false;
+}
+
+static bool sizeObject( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -1 );
+	state.stack.pop( 1 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == OBJECTARRAY, "Expecting Object in builtin array size" );
+
+	state.SetReturn( arg0.oArrayPtr->m_items.size() );
+
+	return true;
+}
+
+static bool sizeFloatingPoint( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -1 );
+	state.stack.pop( 1 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == FLOATINGPOINTARRAY, "Expecting FloatingPoint in builtin array size" );
+
+	state.SetReturn( arg0.fArrayPtr->m_items.size() );
+
+	return true;
+}
+
+static bool sizeInteger( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -1 );
+	state.stack.pop( 1 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == INTEGERARRAY, "Expecting Integer in builtin array size" );
+
+	state.SetReturn( arg0.iArrayPtr->m_items.size() );
+
+	return true;
+}
 
 static bool testimplements( vmstate &state )
 {
@@ -225,6 +299,36 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 	var &v = state.globals[Hash(L"_implements")];
 	v.type = CFUNCTION;
 	v.cfunc = testimplements;
+	}
+	{
+	var &v = state.globals[Hash(L"pushback")^INTEGERARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	pushbackInteger;
+	}
+	{
+	var &v = state.globals[Hash(L"pushback")^FLOATINGPOINTARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	pushbackFloatingPoint;
+	}
+	{
+	var &v = state.globals[Hash(L"pushback")^OBJECTARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	pushbackObject;
+	}
+	{
+	var &v = state.globals[Hash(L"size")^INTEGERARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	sizeInteger;
+	}
+	{
+	var &v = state.globals[Hash(L"size")^FLOATINGPOINTARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	sizeFloatingPoint;
+	}
+	{
+	var &v = state.globals[Hash(L"size")^OBJECTARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	sizeObject;
 	}
 	int pc = loc;
 	bool done = false;
@@ -646,6 +750,12 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					o->m_tbl[key] = v0;
 				}
 				else
+				if ( entries )
+				{
+					CEXCEPTION_ERROR("unexpected entries on type");
+					pc+=entries;
+				}
+				else
 				{
 					if ( item.type == INTEGER )
 					{
@@ -679,6 +789,15 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					PushEntry( ops, pc, o, entries-1, state );
 				}
 				else
+				if ( entries )
+				{
+					CEXCEPTION_ERROR_CONDITION( entries == 1, "unexpected entries on type");
+					int lookup = ops[pc];
+					int hash = (lookup) ^ item.type;
+					pc+=entries;
+					state.stack.push( state.globals[hash] );
+				}
+				else
 				{
 					state.stack.push( item );
 				}
@@ -704,6 +823,12 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					PushEntry( ops, pc, o, entries-1, state );
 				}
 				else
+				if ( entries )
+				{
+					CEXCEPTION_ERROR("bad number of entries on type");
+					pc+=entries;
+				}
+				else
 				{
 					CEXCEPTION_ERROR("err");
 				}
@@ -722,6 +847,12 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					o = CreateEntries( ops, pc, o, entries-1 );
 					int key = ops[pc++];
 					o->m_tbl[key] = v0;
+				}
+				else
+				if ( entries )
+				{
+					CEXCEPTION_ERROR("bad number of entries on type");
+					pc+=entries;
 				}
 				else
 				{
@@ -755,6 +886,15 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				{
 					object *o = item.o;
 					PushEntry( ops, pc, o, entries-1, state );
+				}
+				else
+				if ( entries )
+				{
+					CEXCEPTION_ERROR_CONDITION( entries == 1, "unexpected entries on type");
+					int lookup = ops[pc];
+					int hash = (lookup) ^ item.type;
+					pc+=entries;
+					state.stack.push( state.globals[hash] );
 				}
 				else
 				{

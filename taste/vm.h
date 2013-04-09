@@ -237,6 +237,7 @@ public:
 
 enum VARTYPE
 {
+	UNKNOWN,
 	INTEGER,
 	FLOATINGPOINT,
 	OBJECT,

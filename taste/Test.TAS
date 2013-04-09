@@ -71,7 +71,8 @@ package Test {
 		var object t = new bah;
 		var object o;
 		var int c = t.implements(CanCreate);
-		items2[0] = t;
+		items2.pushback( t );
+		var int c2 = items2.size();
 		o.pos.x = 0.0;
 		o.pos.y = 0.0;
 		o.dir.x = 0.0;

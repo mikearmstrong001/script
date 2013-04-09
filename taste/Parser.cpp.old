@@ -536,7 +536,7 @@ void Parser::EmbedDecl(EmbedDeclAst *&embed) {
 }
 
 void Parser::Def(DefDecl *&def) {
-		VarDeclAst *varDecl; ProcDeclAst *procDecl; EmbedDeclAst *embedAst; 
+		VarDeclAst *varDecl; ProcDeclAst *procDecl; EmbedDeclAst *embedDecl; 
 		Expect(38 /* "def" */);
 		Expect(_ident);
 		def = new DefDecl( t->val ); 
@@ -552,7 +552,7 @@ void Parser::Def(DefDecl *&def) {
 				def->AddVarDecl( varDecl ); 
 			} else if (la->kind == 37 /* "embed" */) {
 				EmbedDecl(embedDecl);
-				def->AddEmbedDecl( embedAst ); 
+				def->AddEmbedDecl( embedDecl ); 
 			} else {
 				ProcDecl(procDecl);
 				def->AddProcDecl( procDecl ); 

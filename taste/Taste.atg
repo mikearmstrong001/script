@@ -38,7 +38,7 @@ CHARACTERS
   tab = '\t'.
 
 TOKENS
-  ident  = [ letter {letter | digit} ':' ] letter {letter | digit}.
+  ident  = [ letter {letter | digit | '_' } ':' ] letter {letter | digit | '_' }.
   //varname = [ letter {letter | digit} ':' ] letter {letter | digit}.
   number = digit {digit}.
   floatingpoint = digit {digit} '.' {digit}.
