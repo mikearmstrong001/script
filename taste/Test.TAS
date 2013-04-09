@@ -70,13 +70,13 @@ package Test {
 	{
 		var object t = new bah;
 		var object o;
-		var int c = t.implements(t,CanCreate);
+		var int c = t.implements(CanCreate);
 		items2[0] = t;
 		o.pos.x = 0.0;
 		o.pos.y = 0.0;
 		o.dir.x = 0.0;
 		o.dir.y = 1.0;
-		t.onCreate( t, o );
+		t.onCreate( o );
 		var float f = testret();
 		f = cfunc( 10 );
 		var object d = { int a : 20,
@@ -88,9 +88,9 @@ package Test {
 		var int i = 200;
 		while ( i > 0 )
 		{
-			if ( t.implements( t, CanUpdate ) )
+			if ( t.implements( CanUpdate ) )
 			{
-				t.onUpdate( t, 0.1 );
+				t.onUpdate( 0.1 );
 			}
 			i = i - 1;
 		}

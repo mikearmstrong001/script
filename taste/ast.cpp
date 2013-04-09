@@ -52,7 +52,7 @@ inline int AddOp( std::vector<int> &oplist, int op, std::vector<int> const &vars
 {
 	int pos = oplist.size();
 
-	printf( "%04d: %s", pos, opnames[op] );
+	printf( "%04d: %s %d", pos, opnames[op], vars.size() );
 	for (unsigned int i=0; i<vars.size(); i++)
 	{
 		printf(" %d", vars[i] );
@@ -323,6 +323,21 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 
 void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 {
+	StackEntry e;
+	int index = frame.FindEntry( e, m_name );
+
+	if ( m_identVec.size() )
+	{
+		if ( index == 0x7fffffff )
+		{
+			AddOp(oplist,OPC_PUSHITEMG, 1, Hash( m_name.c_str() ) );
+		}
+		else
+		{
+			AddOp(oplist,OPC_PUSHITEM, 1, index );
+		}
+	}
+
 	for (unsigned int i=0; i<m_callExpr.size(); i++)
 	{
 		m_callExpr[i]->Generate(oplist,frame);
@@ -334,8 +349,6 @@ void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 		lookup.push_back( Hash( m_identVec[i].c_str() ) );
 	}
 
-	StackEntry e;
-	int index = frame.FindEntry( e, m_name );
 	if ( m_name == L"super" )
 	{
 		int index = frame.FindEntry( e, L"self" );
