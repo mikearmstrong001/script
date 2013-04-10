@@ -228,7 +228,7 @@ static bool resizeUserPtr( vmstate &state )
 	return false;
 }
 
-static bool testimplements( vmstate &state )
+static bool implements( vmstate &state )
 {
 	const var &arg0 = state.GetArg( -2 );
 	const var &arg1 = state.GetArg( -1 );
@@ -360,83 +360,45 @@ static void PushEntry( const int *ops, int &pc, object *o, int entries, vmstate 
 	state.stack.push( FindVar( o, key, state ) );
 }
 
+struct functionreg_s
+{
+	int hash;
+	bool (*func_f)( vmstate & );
+};
+
+static functionreg_s globalFuncs[] =
+{
+	{ Hash(L"cfunc"), testcfunc },
+	{ Hash(L"printffloat"), printffloat },
+	{ Hash(L"_implements"), implements },
+	{ Hash(L"pushback")^INTEGERARRAY, pushbackInteger },
+	{ Hash(L"pushback")^FLOATINGPOINTARRAY, pushbackFloatingPoint },
+	{ Hash(L"pushback")^OBJECTARRAY, pushbackObject },
+	{ Hash(L"pushback")^USERPTRARRAY, pushbackUserPtr },
+	{ Hash(L"size")^INTEGERARRAY, sizeInteger },
+	{ Hash(L"size")^FLOATINGPOINTARRAY, sizeFloatingPoint },
+	{ Hash(L"size")^OBJECTARRAY, sizeObject },
+	{ Hash(L"size")^USERPTRARRAY, sizeUserPtr },
+	{ Hash(L"resize")^INTEGERARRAY, resizeInteger },
+	{ Hash(L"resize")^FLOATINGPOINTARRAY, resizeFloatingPoint },
+	{ Hash(L"resize")^OBJECTARRAY, resizeObject },
+	{ Hash(L"resize")^USERPTRARRAY, resizeUserPtr },
+	0, NULL
+};
+
+void vmRegister( vmstate &state, functionreg_s reg[] )
+{
+	for (int i=0; reg[i].func_f; i++)
+	{
+		var &v = state.globals[reg[i].hash];
+		v.type = CFUNCTION;
+		v.cfunc = 	reg[i].func_f;
+	}
+}
+
 void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 {
-	{
-	var &v = state.globals[Hash(L"cfunc")];
-	v.type = CFUNCTION;
-	v.cfunc = testcfunc;
-	}
-	{
-	var &v = state.globals[Hash(L"printffloat")];
-	v.type = CFUNCTION;
-	v.cfunc = printffloat;
-	}
-	{
-	var &v = state.globals[Hash(L"_implements")];
-	v.type = CFUNCTION;
-	v.cfunc = testimplements;
-	}
-	{
-	var &v = state.globals[Hash(L"pushback")^INTEGERARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	pushbackInteger;
-	}
-	{
-	var &v = state.globals[Hash(L"pushback")^FLOATINGPOINTARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	pushbackFloatingPoint;
-	}
-	{
-	var &v = state.globals[Hash(L"pushback")^OBJECTARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	pushbackObject;
-	}
-	{
-	var &v = state.globals[Hash(L"pushback")^USERPTRARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	pushbackUserPtr;
-	}
-	{
-	var &v = state.globals[Hash(L"size")^INTEGERARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	sizeInteger;
-	}
-	{
-	var &v = state.globals[Hash(L"size")^FLOATINGPOINTARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	sizeFloatingPoint;
-	}
-	{
-	var &v = state.globals[Hash(L"size")^OBJECTARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	sizeObject;
-	}
-	{
-	var &v = state.globals[Hash(L"size")^USERPTRARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	sizeUserPtr;
-	}
-	{
-	var &v = state.globals[Hash(L"resize")^INTEGERARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	resizeInteger;
-	}
-	{
-	var &v = state.globals[Hash(L"resize")^FLOATINGPOINTARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	resizeFloatingPoint;
-	}
-	{
-	var &v = state.globals[Hash(L"resize")^OBJECTARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	resizeObject;
-	}
-	{
-	var &v = state.globals[Hash(L"resize")^USERPTRARRAY];
-	v.type = CFUNCTION;
-	v.cfunc = 	resizeUserPtr;
-	}
+	vmRegister( state, globalFuncs );
 	int pc = loc;
 	bool done = false;
 	state.envStack.reset( 0 );
