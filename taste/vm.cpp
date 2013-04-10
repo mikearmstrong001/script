@@ -115,6 +115,19 @@ static bool pushbackInteger( vmstate &state )
 	return false;
 }
 
+static bool pushbackUserPtr( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	const var &arg1 = state.GetArg( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == USERPTRARRAY && arg1.type == USERPTR, "Expecting userptr in builtin array pushback" );
+
+	arg0.uArrayPtr->m_items.push_back( arg1.u );
+
+	return false;
+}
+
 static bool sizeObject( vmstate &state )
 {
 	const var &arg0 = state.GetArg( -1 );
@@ -149,6 +162,70 @@ static bool sizeInteger( vmstate &state )
 	state.SetReturn( arg0.iArrayPtr->m_items.size() );
 
 	return true;
+}
+
+static bool sizeUserPtr( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -1 );
+	state.stack.pop( 1 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == USERPTRARRAY, "Expecting Integer in builtin array size" );
+
+	state.SetReturn( arg0.uArrayPtr->m_items.size() );
+
+	return true;
+}
+
+static bool resizeObject( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	int arg1 = state.GetArgAsInt( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == OBJECTARRAY, "Expecting Object in builtin array size" );
+
+	arg0.oArrayPtr->m_items.resize( arg1 );
+
+	return false;
+}
+
+static bool resizeFloatingPoint( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	int arg1 = state.GetArgAsInt( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == FLOATINGPOINTARRAY, "Expecting Integer in builtin array size" );
+	
+	arg0.fArrayPtr->m_items.resize( arg1 );
+
+	return false;
+}
+
+static bool resizeInteger( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	int arg1 = state.GetArgAsInt( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == INTEGERARRAY, "Expecting Integer in builtin array size" );
+
+	arg0.iArrayPtr->m_items.resize( arg1 );
+
+	return false;
+}
+
+static bool resizeUserPtr( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	int arg1 = state.GetArgAsInt( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == USERPTRARRAY, "Expecting Integer in builtin array size" );
+
+	arg0.uArrayPtr->m_items.resize( arg1 );
+
+	return false;
 }
 
 static bool testimplements( vmstate &state )
@@ -316,6 +393,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 	v.cfunc = 	pushbackObject;
 	}
 	{
+	var &v = state.globals[Hash(L"pushback")^USERPTRARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	pushbackUserPtr;
+	}
+	{
 	var &v = state.globals[Hash(L"size")^INTEGERARRAY];
 	v.type = CFUNCTION;
 	v.cfunc = 	sizeInteger;
@@ -329,6 +411,31 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 	var &v = state.globals[Hash(L"size")^OBJECTARRAY];
 	v.type = CFUNCTION;
 	v.cfunc = 	sizeObject;
+	}
+	{
+	var &v = state.globals[Hash(L"size")^USERPTRARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	sizeUserPtr;
+	}
+	{
+	var &v = state.globals[Hash(L"resize")^INTEGERARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	resizeInteger;
+	}
+	{
+	var &v = state.globals[Hash(L"resize")^FLOATINGPOINTARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	resizeFloatingPoint;
+	}
+	{
+	var &v = state.globals[Hash(L"resize")^OBJECTARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	resizeObject;
+	}
+	{
+	var &v = state.globals[Hash(L"resize")^USERPTRARRAY];
+	v.type = CFUNCTION;
+	v.cfunc = 	resizeUserPtr;
 	}
 	int pc = loc;
 	bool done = false;
@@ -913,35 +1020,29 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			break;
 		case OPC_POPITEMGARRAY:
 			{
+				var v1 = state.stack.top(); state.stack.pop();
 				var v0 = state.stack.top(); state.stack.pop();
 				int lookup = ops[pc++];
-				int index = ops[pc++];
+				int index = ToInt( v1 );
 				var &v = state.globals[lookup];
 				if ( v.type == INTEGERARRAY )
 				{
-					if ( (int)v.iArrayPtr->m_items.size() <= index )
-					{
-						v.iArrayPtr->m_items.resize( index+1 );
-					}
 					v.iArrayPtr->m_items[index] = ToInt( v0 );
 				}
 				else
 				if ( v.type == FLOATINGPOINTARRAY )
 				{
-					if ( (int)v.fArrayPtr->m_items.size() <= index )
-					{
-						v.fArrayPtr->m_items.resize( index+1 );
-					}
 					v.fArrayPtr->m_items[index] = ToFloat( v0 );
 				}
 				else
 				if ( v.type == OBJECTARRAY && v0.type == OBJECT )
 				{
-					if ( (int)v.oArrayPtr->m_items.size() <= index )
-					{
-						v.oArrayPtr->m_items.resize( index+1 );
-					}
 					v.oArrayPtr->m_items[index] = v0.o;
+				}
+				else
+				if ( v.type == USERPTRARRAY && v0.type == USERPTR )
+				{
+					v.uArrayPtr->m_items[index] = v0.u;
 				}
 				else
 				{
@@ -951,35 +1052,29 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			break;
 		case OPC_POPITEMARRAY:
 			{
+				var v1 = state.stack.top(); state.stack.pop();
 				var v0 = state.stack.top(); state.stack.pop();
 				int lookup = ops[pc++];
-				int index = ops[pc++];
+				int index = ToInt( v1 );
 				var &v = state.stack[state.envStack.top()+lookup];
 				if ( v.type == INTEGERARRAY )
 				{
-					if ( (int)v.iArrayPtr->m_items.size() <= index )
-					{
-						v.iArrayPtr->m_items.resize( index+1 );
-					}
 					v.iArrayPtr->m_items[index] = ToInt( v0 );
 				}
 				else
 				if ( v.type == FLOATINGPOINTARRAY )
 				{
-					if ( (int)v.fArrayPtr->m_items.size() <= index )
-					{
-						v.fArrayPtr->m_items.resize( index+1 );
-					}
 					v.fArrayPtr->m_items[index] = ToFloat( v0 );
 				}
 				else
 				if ( v.type == OBJECTARRAY && v0.type == OBJECT )
 				{
-					if ( (int)v.oArrayPtr->m_items.size() <= index )
-					{
-						v.oArrayPtr->m_items.resize( index+1 );
-					}
 					v.oArrayPtr->m_items[index] = v0.o;
+				}
+				else
+				if ( v.type == USERPTRARRAY && v0.type == USERPTR )
+				{
+					v.uArrayPtr->m_items[index] = v0.u;
 				}
 				else
 				{
@@ -989,15 +1084,12 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			break;
 		case OPC_PUSHITEMGARRAY:
 			{
+				var v1 = state.stack.top(); state.stack.pop();
+				int index = ToInt( v1 );
 				int lookup = ops[pc++];
-				int index = ops[pc++];
 				var &v = state.globals[lookup];
 				if ( v.type == INTEGERARRAY )
 				{
-					if ( (int)v.iArrayPtr->m_items.size() <= index )
-					{
-						v.iArrayPtr->m_items.resize( index+1 );
-					}
 					var &v0 = state.stack.push();
 					v0.type = INTEGER;
 					v0.i = v.iArrayPtr->m_items[index];
@@ -1005,10 +1097,6 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				else
 				if ( v.type == FLOATINGPOINTARRAY )
 				{
-					if ( (int)v.fArrayPtr->m_items.size() <= index )
-					{
-						v.fArrayPtr->m_items.resize( index+1 );
-					}
 					var &v0 = state.stack.push();
 					v0.type = FLOATINGPOINT;
 					v0.f = v.fArrayPtr->m_items[index];
@@ -1016,13 +1104,16 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				else
 				if ( v.type == OBJECTARRAY )
 				{
-					if ( (int)v.oArrayPtr->m_items.size() <= index )
-					{
-						v.oArrayPtr->m_items.resize( index+1 );
-					}
 					var &v0 = state.stack.push();
 					v0.type = OBJECT;
 					v0.o = v.oArrayPtr->m_items[index];
+				}
+				else
+				if ( v.type == USERPTRARRAY )
+				{
+					var &v0 = state.stack.push();
+					v0.type = USERPTR;
+					v0.u = v.uArrayPtr->m_items[index];
 				}
 				else
 				{
@@ -1032,15 +1123,12 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			break;
 		case OPC_PUSHITEMARRAY:
 			{
+				var v1 = state.stack.top(); state.stack.pop();
+				int index = ToInt( v1 );
 				int lookup = ops[pc++];
-				int index = ops[pc++];
 				var &v = state.stack[state.envStack.top()+lookup];
 				if ( v.type == INTEGERARRAY )
 				{
-					if ( (int)v.iArrayPtr->m_items.size() <= index )
-					{
-						v.iArrayPtr->m_items.resize( index+1 );
-					}
 					var &v0 = state.stack.push();
 					v0.type = INTEGER;
 					v0.i = v.iArrayPtr->m_items[index];
@@ -1048,10 +1136,6 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				else
 				if ( v.type == FLOATINGPOINTARRAY )
 				{
-					if ( (int)v.fArrayPtr->m_items.size() <= index )
-					{
-						v.fArrayPtr->m_items.resize( index+1 );
-					}
 					var &v0 = state.stack.push();
 					v0.type = FLOATINGPOINT;
 					v0.f = v.fArrayPtr->m_items[index];
@@ -1059,13 +1143,16 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				else
 				if ( v.type == OBJECTARRAY )
 				{
-					if ( (int)v.oArrayPtr->m_items.size() <= index )
-					{
-						v.oArrayPtr->m_items.resize( index+1 );
-					}
 					var &v0 = state.stack.push();
 					v0.type = OBJECT;
 					v0.o = v.oArrayPtr->m_items[index];
+				}
+				else
+				if ( v.type == USERPTRARRAY )
+				{
+					var &v0 = state.stack.push();
+					v0.type = USERPTR;
+					v0.u = v.uArrayPtr->m_items[index];
 				}
 				else
 				{

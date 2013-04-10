@@ -241,11 +241,14 @@ enum VARTYPE
 	INTEGER,
 	FLOATINGPOINT,
 	OBJECT,
+	VOID,
+	USERPTR,
 	VMFUNCTION,
 	CFUNCTION,
 	INTEGERARRAY,
 	FLOATINGPOINTARRAY,
 	OBJECTARRAY,
+	USERPTRARRAY,
 };
 
 struct object;
@@ -265,9 +268,11 @@ struct var
 		int i;
 		float f;
 		object *o;
+		void *u;
 		arrayvar<int> *iArrayPtr;
 		arrayvar<float> *fArrayPtr;
 		arrayvar<object*> *oArrayPtr;
+		arrayvar<void*> *uArrayPtr;
 		bool (*cfunc)( struct vmstate &state );
 	};
 };

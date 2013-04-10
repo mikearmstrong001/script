@@ -142,15 +142,16 @@ void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 {
 	StackEntry e;
 	int index = frame.FindEntry( e, m_name );
-	if ( m_index != -1 )
+	if ( m_index != 0 )
 	{
+		m_index->Generate( oplist, frame );
 		if ( index == 0x7fffffff )
 		{
-			AddOp( oplist, OPC_PUSHITEMGARRAY, Hash( m_name.c_str() ), m_index );
+			AddOp( oplist, OPC_PUSHITEMGARRAY, Hash( m_name.c_str() ) );
 		}
 		else
 		{
-			AddOp( oplist, OPC_PUSHITEMARRAY, index, m_index );
+			AddOp( oplist, OPC_PUSHITEMARRAY, index );
 		}
 	}
 	else
@@ -204,9 +205,9 @@ void NegateAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 
 void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 {
-	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, 
+	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR
 						};
-	VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, 
+	VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, INTEGERARRAY, USERPTRARRAY
 						};
 	if ( frame.GetDepth() == 1 )
 	{
@@ -245,9 +246,9 @@ void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 
 void VarDeclAst::GenerateConstructor( std::vector<int> &oplist, StackFrame &frame )
 {
-	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, 
+	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR
 						};
-	VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, 
+	VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, INTEGERARRAY, USERPTRARRAY
 						};
 	AddOp( oplist, OPC_CONSTRUCTVAR, m_isarray ? typemaparray[m_type] : typemap[m_type], Hash( m_name.c_str() ) );
 }
@@ -258,7 +259,7 @@ void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	frame.StartFunction(m_declaration.size());
 	printf( "%S:\n", m_name.c_str() );
 
-	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT };
+	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, USERPTR };
 	for (unsigned int i=0; i<m_declaration.size(); i++)
 	{
 		frame.AddEntry( m_declaration[i].name, typemap[m_declaration[i].type] );
@@ -284,15 +285,16 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	m_expr->Generate(oplist,frame);
 	StackEntry e;
 	int index = frame.FindEntry( e, m_name );
-	if ( m_arrayIndex >=0 )
+	if ( m_arrayIndex != 0 )
 	{
+		m_arrayIndex->Generate( oplist, frame );
 		if ( index == 0x7fffffff )
 		{
-			AddOp(oplist,OPC_POPITEMGARRAY, Hash( m_name.c_str() ), m_arrayIndex );
+			AddOp(oplist,OPC_POPITEMGARRAY, Hash( m_name.c_str() ) );
 		}
 		else
 		{
-			AddOp(oplist,OPC_POPITEMARRAY, index, m_arrayIndex );
+			AddOp(oplist,OPC_POPITEMARRAY, index );
 		}
 	}
 	else
@@ -328,13 +330,21 @@ void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 
 	if ( m_identVec.size() )
 	{
+		std::vector<int> lookup;
+		lookup.push_back( 0 );
+		for (unsigned int i=0; i<(m_identVec.size()-1); i++)
+		{
+			lookup.push_back( Hash( m_identVec[i].c_str() ) );
+		}
 		if ( index == 0x7fffffff )
 		{
-			AddOp(oplist,OPC_PUSHITEMG, 1, Hash( m_name.c_str() ) );
+			lookup[0] = Hash( m_name.c_str() );
+			AddOp(oplist,OPC_PUSHITEMG, lookup );
 		}
 		else
 		{
-			AddOp(oplist,OPC_PUSHITEM, 1, index );
+			lookup[0] = index;
+			AddOp(oplist,OPC_PUSHITEM, lookup );
 		}
 	}
 

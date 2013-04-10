@@ -292,12 +292,12 @@ void Parser::Factor(AstBase* &factor) {
 		switch (la->kind) {
 		case _ident: {
 			Get();
-			IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstVec exprVec; 
+			IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstVec exprVec; AstBase *expr; 
 			if (la->kind == 15 /* "[" */ || la->kind == 24 /* "." */ || la->kind == 25 /* "(" */) {
 				if (la->kind == 15 /* "[" */) {
 					Get();
-					Expect(_number);
-					identFactor->SetArrayIndex( t->val ); 
+					Expr(expr);
+					identFactor->SetArrayIndex( expr ); 
 					Expect(16 /* "]" */);
 				} else if (la->kind == 24 /* "." */) {
 					Get();
@@ -485,12 +485,12 @@ void Parser::Stat(AstBase *&stat) {
 			Expect(13 /* "}" */);
 		} else if (la->kind == _ident) {
 			Get();
-			IdentAst *identStat = new IdentAst( t->val ); stat = identStat; IdentVec identVec; 
+			IdentAst *identStat = new IdentAst( t->val ); stat = identStat; IdentVec identVec; AstBase *expr; 
 			if (la->kind == 15 /* "[" */ || la->kind == 24 /* "." */) {
 				if (la->kind == 15 /* "[" */) {
 					Get();
-					Expect(_number);
-					identStat->SetArrayIndex( t->val ); 
+					Expr(expr);
+					identStat->SetArrayIndex( expr ); 
 					Expect(16 /* "]" */);
 				} else {
 					Get();

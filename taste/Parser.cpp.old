@@ -292,12 +292,12 @@ void Parser::Factor(AstBase* &factor) {
 		switch (la->kind) {
 		case _ident: {
 			Get();
-			IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstVec exprVec; 
+			IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstVec exprVec; AstBase *expr; 
 			if (la->kind == 15 /* "[" */ || la->kind == 24 /* "." */ || la->kind == 25 /* "(" */) {
 				if (la->kind == 15 /* "[" */) {
 					Get();
-					Expect(_number);
-					identFactor->SetArrayIndex( t->val ); 
+					Expr(expr);
+					identFactor->SetArrayIndex( expr ); 
 					Expect(16 /* "]" */);
 				} else if (la->kind == 24 /* "." */) {
 					Get();

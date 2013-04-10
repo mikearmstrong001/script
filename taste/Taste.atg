@@ -193,11 +193,11 @@ ObjectMemberList<IdentVec &vec>
 Factor<AstBase* &factor>			(. AstBase *other_factor; .)
 =                        
 	( 
-		ident						(. IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstVec exprVec; .)
+		ident						(. IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstVec exprVec; AstBase *expr; .)
 		[
 			( 
 				'[' 
-					number				(. identFactor->SetArrayIndex( t->val ); .)
+					Expr<expr>		(. identFactor->SetArrayIndex( expr ); .)
 				']'		
 			)
 			| 
@@ -375,12 +375,12 @@ Stat<AstBase *&stat>			(. VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *su
 	)
 	| 
 	(
-		ident							(. IdentAst *identStat = new IdentAst( t->val ); stat = identStat; IdentVec identVec; .)
+		ident							(. IdentAst *identStat = new IdentAst( t->val ); stat = identStat; IdentVec identVec; AstBase *expr; .)
 		(
 			[ 
 				( 
 					'['
-					number					(. identStat->SetArrayIndex( t->val ); .)
+					Expr<expr>					(. identStat->SetArrayIndex( expr ); .)
 					']'
 				)
 				| 

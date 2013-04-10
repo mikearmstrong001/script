@@ -102,17 +102,8 @@ public:
 			if ( m_active[i].name == n )
 			{
 				e = m_active[i];
-				/*
-				if ( m_active[i].depth == 1 )
-				{
-					// global
-					return i;
-				}
-				else*/
-				{
-					int rel = i - m_return[m_return.size()-1];
-					return rel;
-				}
+				int rel = i - m_return[m_return.size()-1];
+				return rel;
 			}
 		}
 		return 0x7fffffff;
@@ -209,14 +200,14 @@ class IdentAst : public ValueAst
 {
 	std::wstring m_name;
 	IdentVec m_identVec;
-	int		m_index;
+	AstBase		*m_index;
 public:
-	IdentAst( const wchar_t *token ) : m_name(token), m_index(-1) {}
-	void SetArrayIndex( const wchar_t *token ) { swscanf(token, L"%d", &m_index); }
+	IdentAst( const wchar_t *token ) : m_name(token), m_index(0) {}
+	void SetArrayIndex( AstBase *index ) { m_index = index; }
 	void SetMemberList( const IdentVec &v ) { m_identVec = v; }
 	std::wstring const &GetName() const { return m_name; }
 	wchar_t const *GetNameWC() const { return m_name.c_str(); }
-	int GetArrayIndex() const { return m_index; }
+	AstBase *GetArrayIndex() const { return m_index; }
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
 };
 
@@ -307,12 +298,12 @@ public:
 class AssignAst : public AstBase
 {
 	std::wstring m_name;
-	int m_arrayIndex;
+	AstBase  *m_arrayIndex;
 	IdentVec m_identVec;
 	AstBase *m_expr;
 public:
 
-	AssignAst( const wchar_t *token, int arrayindex, const IdentVec &v, AstBase *expr ) : m_name(token), m_arrayIndex(arrayindex), m_identVec(v), m_expr(expr) {}
+	AssignAst( const wchar_t *token, AstBase  *arrayindex, const IdentVec &v, AstBase *expr ) : m_name(token), m_arrayIndex(arrayindex), m_identVec(v), m_expr(expr) {}
 
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
 };

@@ -31,6 +31,7 @@ package Test {
 		var int a;
 		var int b;
 		var float c;
+		var userptr renderHandle;
 
 		function void onCreate( object createParams )
 		{
@@ -57,6 +58,7 @@ package Test {
 			printffloat( self.pos.y );
 			printffloat( self.dir.y );
 		}
+
     
 	};
 
@@ -89,9 +91,16 @@ package Test {
 		var int i = 200;
 		while ( i > 0 )
 		{
-			if ( t.implements( CanUpdate ) )
+			var int numitems = items2.size();
+			var int j=0;
+			while ( j < numitems )
 			{
-				t.onUpdate( 0.1 );
+				var object curj = items2[j];
+				if ( curj.implements( CanUpdate ) )
+				{
+					curj.onUpdate( 0.1 );
+				}
+				j = j+1;
 			}
 			i = i - 1;
 		}
