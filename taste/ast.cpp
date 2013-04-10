@@ -12,6 +12,22 @@ inline int AddOp( std::vector<int> &oplist, int op )
 	return pos;
 }
 
+inline int AddOp( std::vector<int> &oplist, int op, const wchar_t *str )
+{
+	int len = wcslen( str );
+	int pos = oplist.size();
+
+	printf( "%04d: %s %S\n", pos, opnames[op], str );
+
+	oplist.push_back( op );
+	oplist.push_back( len );
+	for (int i=0; i<len; i+=2)
+	{
+		oplist.push_back((str[i+1]<<16)|(str[i]<<0));
+	}
+	return pos;
+}
+
 inline int AddOp( std::vector<int> &oplist, int op, int v )
 {
 	int pos = oplist.size();
@@ -197,6 +213,12 @@ void ConstBooleanAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	AddOp( oplist, OPC_PUSHI, m_value ? 1 : 0 );
 }
 
+void ConstStringAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+{
+	AddOp( oplist, OPC_PUSHSTR, m_value.c_str() );
+}
+
+
 void NegateAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 {
 	m_child->Generate(oplist,frame);
@@ -205,9 +227,9 @@ void NegateAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 
 void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 {
-	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR
+	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR, STRING
 						};
-	VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, INTEGERARRAY, USERPTRARRAY
+	VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, INTEGERARRAY, USERPTRARRAY, STRINGARRAY
 						};
 	if ( frame.GetDepth() == 1 )
 	{
@@ -246,9 +268,9 @@ void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 
 void VarDeclAst::GenerateConstructor( std::vector<int> &oplist, StackFrame &frame )
 {
-	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR
+	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR, STRING
 						};
-	VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, INTEGERARRAY, USERPTRARRAY
+	VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, INTEGERARRAY, USERPTRARRAY, STRINGARRAY
 						};
 	AddOp( oplist, OPC_CONSTRUCTVAR, m_isarray ? typemaparray[m_type] : typemap[m_type], Hash( m_name.c_str() ) );
 }

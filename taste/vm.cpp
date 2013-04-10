@@ -13,6 +13,7 @@ const char *opnames[] =
 	"OPC_GTR",
 	"OPC_PUSHI",
 	"OPC_PUSHF",
+	"OPC_PUSHSTR",
 	"OPC_NEG",
 	"OPC_MAKEVAR",
 	"OPC_MAKEVARG",
@@ -128,6 +129,19 @@ static bool pushbackUserPtr( vmstate &state )
 	return false;
 }
 
+static bool pushbackString( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	const var &arg1 = state.GetArg( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == STRINGARRAY && arg1.type == STRING, "Expecting string in builtin array pushback" );
+
+	arg0.strArrayPtr->m_items.push_back( arg1.str );
+
+	return false;
+}
+
 static bool sizeObject( vmstate &state )
 {
 	const var &arg0 = state.GetArg( -1 );
@@ -172,6 +186,18 @@ static bool sizeUserPtr( vmstate &state )
 	CEXCEPTION_ERROR_CONDITION( arg0.type == USERPTRARRAY, "Expecting Integer in builtin array size" );
 
 	state.SetReturn( arg0.uArrayPtr->m_items.size() );
+
+	return true;
+}
+
+static bool sizeString( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -1 );
+	state.stack.pop( 1 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == STRINGARRAY, "Expecting String in builtin array size" );
+
+	state.SetReturn( arg0.strArrayPtr->m_items.size() );
 
 	return true;
 }
@@ -224,6 +250,19 @@ static bool resizeUserPtr( vmstate &state )
 	CEXCEPTION_ERROR_CONDITION( arg0.type == USERPTRARRAY, "Expecting Integer in builtin array size" );
 
 	arg0.uArrayPtr->m_items.resize( arg1 );
+
+	return false;
+}
+
+static bool resizeString( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	int arg1 = state.GetArgAsInt( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == STRINGARRAY, "Expecting String in builtin array size" );
+
+	arg0.strArrayPtr->m_items.resize( arg1 );
 
 	return false;
 }
@@ -375,14 +414,17 @@ static functionreg_s globalFuncs[] =
 	{ Hash(L"pushback")^FLOATINGPOINTARRAY, pushbackFloatingPoint },
 	{ Hash(L"pushback")^OBJECTARRAY, pushbackObject },
 	{ Hash(L"pushback")^USERPTRARRAY, pushbackUserPtr },
+	{ Hash(L"pushback")^STRINGARRAY, pushbackString },
 	{ Hash(L"size")^INTEGERARRAY, sizeInteger },
 	{ Hash(L"size")^FLOATINGPOINTARRAY, sizeFloatingPoint },
 	{ Hash(L"size")^OBJECTARRAY, sizeObject },
 	{ Hash(L"size")^USERPTRARRAY, sizeUserPtr },
+	{ Hash(L"size")^STRINGARRAY, sizeString },
 	{ Hash(L"resize")^INTEGERARRAY, resizeInteger },
 	{ Hash(L"resize")^FLOATINGPOINTARRAY, resizeFloatingPoint },
 	{ Hash(L"resize")^OBJECTARRAY, resizeObject },
 	{ Hash(L"resize")^USERPTRARRAY, resizeUserPtr },
+	{ Hash(L"resize")^STRINGARRAY, resizeString },
 	0, NULL
 };
 
@@ -480,6 +522,16 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					item.oArrayPtr = new arrayvar<object*>;
 				}
 				else
+				if ( type == USERPTRARRAY )
+				{
+					item.uArrayPtr = new arrayvar<void*>;
+				}
+				else
+				if ( type == STRINGARRAY )
+				{
+					item.strArrayPtr = new arrayvar<string*>;
+				}
+				else
 				{
 					item.o = 0;
 				}
@@ -512,6 +564,16 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( type == OBJECTARRAY )
 				{
 					item.oArrayPtr = new arrayvar<object*>;
+				}
+				else
+				if ( type == USERPTRARRAY )
+				{
+					item.uArrayPtr = new arrayvar<void*>;
+				}
+				else
+				if ( type == STRINGARRAY )
+				{
+					item.strArrayPtr = new arrayvar<string*>;
 				}
 				else
 				{
@@ -558,6 +620,16 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( type == OBJECTARRAY )
 				{
 					item.oArrayPtr = new arrayvar<object*>;
+				}
+				else
+				if ( type == USERPTRARRAY )
+				{
+					item.uArrayPtr = new arrayvar<void*>;
+				}
+				else
+				if ( type == STRINGARRAY )
+				{
+					item.strArrayPtr = new arrayvar<string*>;
 				}
 				else
 				{
@@ -836,9 +908,9 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 						item.f = ToFloat( v0 );
 					}
 					else
-					if ( item.type == OBJECT && v0.type == OBJECT)
+					if ( item.type == v0.type )
 					{
-						item.o = v0.o;
+						item = v0;
 					}
 					else
 					{
@@ -1007,6 +1079,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					v.uArrayPtr->m_items[index] = v0.u;
 				}
 				else
+				if ( v.type == STRINGARRAY && v0.type == STRING )
+				{
+					v.strArrayPtr->m_items[index] = v0.str;
+				}
+				else
 				{
 					CEXCEPTION_ERROR( "err" );
 				}
@@ -1037,6 +1114,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( v.type == USERPTRARRAY && v0.type == USERPTR )
 				{
 					v.uArrayPtr->m_items[index] = v0.u;
+				}
+				else
+				if ( v.type == STRINGARRAY && v0.type == STRING )
+				{
+					v.strArrayPtr->m_items[index] = v0.str;
 				}
 				else
 				{
@@ -1078,6 +1160,13 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					v0.u = v.uArrayPtr->m_items[index];
 				}
 				else
+				if ( v.type == STRINGARRAY )
+				{
+					var &v0 = state.stack.push();
+					v0.type = STRING;
+					v0.str = v.strArrayPtr->m_items[index];
+				}
+				else
 				{
 					CEXCEPTION_ERROR( "err" );
 				}
@@ -1117,9 +1206,27 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					v0.u = v.uArrayPtr->m_items[index];
 				}
 				else
+				if ( v.type == STRINGARRAY )
+				{
+					var &v0 = state.stack.push();
+					v0.type = STRING;
+					v0.str = v.strArrayPtr->m_items[index];
+				}
+				else
 				{
 					CEXCEPTION_ERROR( "err" );
 				}
+			}
+			break;
+		case OPC_PUSHSTR:
+			{
+				int len = ops[pc++];
+				wchar_t *s = (wchar_t*)&ops[pc];
+				string *str = new string( s, len );
+				var &v0 = state.stack.push();
+				v0.type = STRING;
+				v0.str = str;
+				pc += (len+1)/2;
 			}
 			break;
 		default:

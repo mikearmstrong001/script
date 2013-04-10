@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cexception.h"
+#include <string.h>
 
 enum OPCODES
 {
@@ -13,6 +14,7 @@ enum OPCODES
 	OPC_GTR,
 	OPC_PUSHI,
 	OPC_PUSHF,
+	OPC_PUSHSTR,
 	OPC_NEG,
 	OPC_MAKEVAR,
 	OPC_MAKEVARG,
@@ -235,6 +237,29 @@ public:
 	}
 };
 
+class string
+{
+	wchar_t m_chars[16];
+	int m_len;
+
+public:
+
+	string( wchar_t *s, int len )
+	{
+		if ( len < 15 )
+		{
+			wcsncpy( m_chars, s, len );
+			m_chars[len] = 0;
+		}
+		else
+		{
+			m_chars[0] = 0;
+		}
+		
+		m_len = len;
+	}
+};
+
 enum VARTYPE
 {
 	UNKNOWN,
@@ -243,12 +268,14 @@ enum VARTYPE
 	OBJECT,
 	VOID,
 	USERPTR,
+	STRING,
 	VMFUNCTION,
 	CFUNCTION,
 	INTEGERARRAY,
 	FLOATINGPOINTARRAY,
 	OBJECTARRAY,
 	USERPTRARRAY,
+	STRINGARRAY,
 };
 
 struct object;
@@ -269,10 +296,12 @@ struct var
 		float f;
 		object *o;
 		void *u;
+		string *str;
 		arrayvar<int> *iArrayPtr;
 		arrayvar<float> *fArrayPtr;
 		arrayvar<object*> *oArrayPtr;
 		arrayvar<void*> *uArrayPtr;
+		arrayvar<string*> *strArrayPtr;
 		bool (*cfunc)( struct vmstate &state );
 	};
 };

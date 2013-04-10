@@ -233,6 +233,18 @@ public:
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
 };
 
+class ConstStringAst : public ValueAst
+{
+	std::wstring m_value;
+public:
+	ConstStringAst( const wchar_t *token )
+	{
+		m_value = std::wstring(token+1);
+		m_value = m_value.substr( 0, m_value.size()-1 );
+	}
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+};
+
 class ConstBooleanAst : public ValueAst
 {
 	bool m_value;

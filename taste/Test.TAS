@@ -70,6 +70,9 @@ package Test {
 	
 	function void Main()
 	{
+		var string str = "blah";
+		var string[] strarray;
+		strarray.pushback( str );
 		var object t = new bah;
 		var object o;
 		var int c = t.implements(CanCreate);

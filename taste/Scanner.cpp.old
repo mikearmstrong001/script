@@ -449,50 +449,52 @@ Scanner::~Scanner() {
 void Scanner::Init() {
 	EOL    = '\n';
 	eofSym = 0;
-	maxT = 42;
-	noSym = 42;
+	maxT = 44;
+	noSym = 44;
 	int i;
-	for (i = 65; i <= 90; ++i) start.set(i, 4);
-	for (i = 97; i <= 122; ++i) start.set(i, 4);
-	for (i = 48; i <= 57; ++i) start.set(i, 5);
-	start.set(58, 6);
-	start.set(123, 7);
-	start.set(44, 8);
-	start.set(125, 9);
-	start.set(91, 10);
-	start.set(93, 11);
-	start.set(61, 23);
-	start.set(59, 12);
-	start.set(43, 13);
-	start.set(45, 14);
-	start.set(42, 15);
-	start.set(47, 16);
-	start.set(46, 17);
-	start.set(40, 18);
-	start.set(41, 19);
-	start.set(60, 21);
-	start.set(62, 22);
+	for (i = 65; i <= 90; ++i) start.set(i, 5);
+	for (i = 97; i <= 122; ++i) start.set(i, 5);
+	for (i = 48; i <= 57; ++i) start.set(i, 6);
+	start.set(34, 4);
+	start.set(58, 8);
+	start.set(123, 9);
+	start.set(44, 10);
+	start.set(125, 11);
+	start.set(91, 12);
+	start.set(93, 13);
+	start.set(61, 25);
+	start.set(59, 14);
+	start.set(43, 15);
+	start.set(45, 16);
+	start.set(42, 17);
+	start.set(47, 18);
+	start.set(46, 19);
+	start.set(40, 20);
+	start.set(41, 21);
+	start.set(60, 23);
+	start.set(62, 24);
 		start.set(Buffer::EoF, -1);
-	keywords.set(L"int", 4);
-	keywords.set(L"bool", 5);
-	keywords.set(L"float", 6);
-	keywords.set(L"object", 7);
-	keywords.set(L"userptr", 8);
-	keywords.set(L"void", 9);
-	keywords.set(L"var", 14);
-	keywords.set(L"new", 18);
-	keywords.set(L"true", 27);
-	keywords.set(L"false", 28);
-	keywords.set(L"function", 29);
-	keywords.set(L"if", 33);
-	keywords.set(L"else", 34);
-	keywords.set(L"return", 35);
-	keywords.set(L"while", 36);
-	keywords.set(L"embed", 37);
-	keywords.set(L"def", 38);
-	keywords.set(L"extends", 39);
-	keywords.set(L"interface", 40);
-	keywords.set(L"package", 41);
+	keywords.set(L"int", 5);
+	keywords.set(L"bool", 6);
+	keywords.set(L"float", 7);
+	keywords.set(L"object", 8);
+	keywords.set(L"userptr", 9);
+	keywords.set(L"string", 10);
+	keywords.set(L"void", 11);
+	keywords.set(L"var", 16);
+	keywords.set(L"new", 20);
+	keywords.set(L"true", 29);
+	keywords.set(L"false", 30);
+	keywords.set(L"function", 31);
+	keywords.set(L"if", 35);
+	keywords.set(L"else", 36);
+	keywords.set(L"return", 37);
+	keywords.set(L"while", 38);
+	keywords.set(L"embed", 39);
+	keywords.set(L"def", 40);
+	keywords.set(L"extends", 41);
+	keywords.set(L"interface", 42);
+	keywords.set(L"package", 43);
 
 
 	tvalLength = 128;
@@ -693,32 +695,39 @@ Token* Scanner::NextToken() {
 			else {t->kind = 3; break;}
 		case 4:
 			case_4:
-			recEnd = pos; recKind = 1;
-			if ((ch >= L'0' && ch <= L'9') || (ch >= L'A' && ch <= L'Z') || ch == L'_' || (ch >= L'a' && ch <= L'z')) {AddCh(); goto case_4;}
-			else if (ch == L':') {AddCh(); goto case_1;}
-			else {t->kind = 1; wchar_t *literal = coco_string_create(tval, 0, tlen); t->kind = keywords.get(literal, t->kind); coco_string_delete(literal); break;}
+			if (ch <= L'!' || (ch >= L'#' && ch <= 65535)) {AddCh(); goto case_4;}
+			else if (ch == L'"') {AddCh(); goto case_7;}
+			else {goto case_0;}
 		case 5:
 			case_5:
+			recEnd = pos; recKind = 1;
+			if ((ch >= L'0' && ch <= L'9') || (ch >= L'A' && ch <= L'Z') || ch == L'_' || (ch >= L'a' && ch <= L'z')) {AddCh(); goto case_5;}
+			else if (ch == L':') {AddCh(); goto case_1;}
+			else {t->kind = 1; wchar_t *literal = coco_string_create(tval, 0, tlen); t->kind = keywords.get(literal, t->kind); coco_string_delete(literal); break;}
+		case 6:
+			case_6:
 			recEnd = pos; recKind = 2;
-			if ((ch >= L'0' && ch <= L'9')) {AddCh(); goto case_5;}
+			if ((ch >= L'0' && ch <= L'9')) {AddCh(); goto case_6;}
 			else if (ch == L'.') {AddCh(); goto case_3;}
 			else {t->kind = 2; break;}
-		case 6:
-			{t->kind = 10; break;}
 		case 7:
-			{t->kind = 11; break;}
+			case_7:
+			recEnd = pos; recKind = 4;
+			if (ch <= L'!' || (ch >= L'#' && ch <= 65535)) {AddCh(); goto case_4;}
+			else if (ch == L'"') {AddCh(); goto case_7;}
+			else {t->kind = 4; break;}
 		case 8:
 			{t->kind = 12; break;}
 		case 9:
 			{t->kind = 13; break;}
 		case 10:
-			{t->kind = 15; break;}
+			{t->kind = 14; break;}
 		case 11:
-			{t->kind = 16; break;}
+			{t->kind = 15; break;}
 		case 12:
-			{t->kind = 19; break;}
+			{t->kind = 17; break;}
 		case 13:
-			{t->kind = 20; break;}
+			{t->kind = 18; break;}
 		case 14:
 			{t->kind = 21; break;}
 		case 15:
@@ -732,16 +741,20 @@ Token* Scanner::NextToken() {
 		case 19:
 			{t->kind = 26; break;}
 		case 20:
-			case_20:
-			{t->kind = 30; break;}
+			{t->kind = 27; break;}
 		case 21:
-			{t->kind = 31; break;}
+			{t->kind = 28; break;}
 		case 22:
+			case_22:
 			{t->kind = 32; break;}
 		case 23:
-			recEnd = pos; recKind = 17;
-			if (ch == L'=') {AddCh(); goto case_20;}
-			else {t->kind = 17; break;}
+			{t->kind = 33; break;}
+		case 24:
+			{t->kind = 34; break;}
+		case 25:
+			recEnd = pos; recKind = 19;
+			if (ch == L'=') {AddCh(); goto case_22;}
+			else {t->kind = 19; break;}
 
 	}
 	AppendVal(t);

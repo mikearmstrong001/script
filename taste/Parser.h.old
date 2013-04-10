@@ -58,7 +58,8 @@ private:
 		_EOF=0,
 		_ident=1,
 		_number=2,
-		_floatingpoint=3
+		_floatingpoint=3,
+		_characters=4
 	};
 	int maxT;
 
@@ -84,7 +85,7 @@ int // operators
 	  plus, minus, times, slash, equ, lss, gtr;
 
 	int // types
-	  undef, integer, boolean, floatingpoint, object, voidtype, userptr;
+	  undef, integer, boolean, floatingpoint, object, voidtype, userptr, stringtype;
 
 	int // object kinds
 	  var, proc;
@@ -97,7 +98,7 @@ int // operators
 
 	void InitDeclarations() { // it must exist
 		plus = 0; minus = 1; times = 2; slash = 3; equ = 4; lss = 5; gtr = 6; // operators
-		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; object = 4; voidtype = 5; userptr = 6;// types
+		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; object = 4; voidtype = 5; userptr = 6; stringtype=7; // types
 		var = 0; proc = 1; // object kinds
 		package = NULL;
 	}
