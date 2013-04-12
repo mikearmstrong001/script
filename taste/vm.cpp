@@ -886,6 +886,13 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
 				var &item = state.stack[state.envStack.top()+index];
+				if ( item.type == STRUCT )
+				{
+					CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
+					int eleIndex = ops[pc++];
+					item.s->m_data[eleIndex] = v0;
+				}
+				else
 				if ( item.type == OBJECT && entries )
 				{
 					vmobject *o = item.o;
@@ -985,6 +992,13 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
 				var &item = state.globals[index];
+				if ( item.type == STRUCT )
+				{
+					CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
+					int eleIndex = ops[pc++];
+					item.s->m_data[eleIndex] = v0;
+				}
+				else
 				if ( item.type == OBJECT && entries )
 				{
 					vmobject *o = item.o;

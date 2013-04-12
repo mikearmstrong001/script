@@ -35,6 +35,7 @@ struct StackEntry
 {
 	std::wstring name;
 	VARTYPE type;
+	std::wstring usertype;
 	int depth;
 };
 
@@ -84,11 +85,12 @@ public:
 		return pos;
 	}
 
-	int AddEntry( const std::wstring &n, VARTYPE type )
+	int AddEntry( const std::wstring &n, VARTYPE type, const std::wstring &usertype = L"" )
 	{
 		StackEntry e;
 		e.name = n;
 		e.type = type;
+		e.usertype = usertype;
 		e.depth = m_return.size();
 		int rel = m_active.size() - m_return[m_return.size()-1];
 		m_active.push_back( e );
@@ -135,7 +137,7 @@ protected:
 public:
 
 	virtual ~AstBase() {};
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame ) = 0;
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg ) = 0;
 };
 
 class DataAst : public AstBase
@@ -169,7 +171,7 @@ public:
 		}
 	}
 	void GenerateNameList( std::wstring &varName, std::vector<int> &names );
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class BinaryAst : public AstBase
@@ -189,7 +191,7 @@ public:
 	void SetRight( AstBase *r ) { m_right = r; }
 	void SetOp( int o ) { m_op = o; }
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class ValueAst : public AstBase
@@ -208,7 +210,7 @@ public:
 	std::wstring const &GetName() const { return m_name; }
 	wchar_t const *GetNameWC() const { return m_name.c_str(); }
 	AstBase *GetArrayIndex() const { return m_index; }
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class ConstIntegerAst : public ValueAst
@@ -219,7 +221,7 @@ public:
 	{
 		swscanf(token, L"%d", &m_value);
 	}
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class ConstFloatingPointAst : public ValueAst
@@ -230,7 +232,7 @@ public:
 	{
 		swscanf(token, L"%f", &m_value);
 	}
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class ConstStringAst : public ValueAst
@@ -242,7 +244,7 @@ public:
 		m_value = std::wstring(token+1);
 		m_value = m_value.substr( 0, m_value.size()-1 );
 	}
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class ConstBooleanAst : public ValueAst
@@ -250,7 +252,7 @@ class ConstBooleanAst : public ValueAst
 	bool m_value;
 public:
 	ConstBooleanAst( bool v ) : m_value(v) {}
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class NegateAst : public AstBase
@@ -258,7 +260,7 @@ class NegateAst : public AstBase
 	AstBase *m_child;
 public:
 	NegateAst( AstBase *child ) : m_child(child) {}
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class ExprAst : public AstBase
@@ -286,7 +288,7 @@ public:
 	wchar_t const *GetNameWC() const { return m_name.c_str(); }
 	int	GetType() const { return m_type; }
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 	virtual void GenerateConstructor( std::vector<int> &oplist, StackFrame &frame );
 };
 
@@ -307,7 +309,7 @@ public:
 
 	void PrependDeclInfo( const DeclInfo &info ) { m_declaration.insert( m_declaration.begin(), info ); }
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class AssignAst : public AstBase
@@ -320,7 +322,7 @@ public:
 
 	AssignAst( const wchar_t *token, AstBase  *arrayindex, const IdentVec &v, AstBase *expr ) : m_name(token), m_arrayIndex(arrayindex), m_identVec(v), m_expr(expr) {}
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class CallAst : public AstBase
@@ -332,7 +334,7 @@ public:
 
 	CallAst( const wchar_t *token, const IdentVec &v, AstVec &expr ) : m_name(token) , m_identVec(v), m_callExpr(expr) {}
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class IfAst : public AstBase
@@ -348,7 +350,7 @@ public:
 	void AddIf( AstBase *i ) { m_if.push_back( i ); }
 	void AddElse( AstBase *e ) { m_else.push_back( e ); }
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class WhileAst : public AstBase
@@ -362,7 +364,7 @@ public:
 
 	void AddExpr( AstBase *i ) { m_expr.push_back( i ); }
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class ReturnStat : public AstBase
@@ -371,7 +373,7 @@ class ReturnStat : public AstBase
 public:
 	ReturnStat( AstBase *e ) : m_expr(e) {}
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class BlockAst : public AstBase
@@ -382,7 +384,7 @@ public:
 
 	void AddExpr( AstBase *i ) { m_expr.push_back( i ); }
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class EmbedDeclAst : public AstBase
@@ -397,7 +399,7 @@ public:
 	std::wstring const &GetType() const { return m_type; }
 	std::wstring const &GetName() const { return m_name; }
 
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
 class DefDecl
@@ -417,7 +419,6 @@ class DefDecl
 
 	std::vector< Element > m_flattenedProps;
 
-	int FindIndex( const wchar_t *name );
 
 public:
 
@@ -434,7 +435,9 @@ public:
 
 	std::vector< Element > const &GetProps() const { return m_flattenedProps; }
 
-	virtual void GenerateDef( std::vector<int> &oplist, vmstate &state );
+	int FindElementIndex( const wchar_t *name );
+
+	virtual void GenerateDef( std::vector<int> &oplist, vmstate &state, class Package *pkg );
 	virtual void GenerateProps( class Package *pkg, vmstate &state );
 };
 

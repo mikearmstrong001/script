@@ -84,6 +84,7 @@ package Test {
 	{
 		struct t2 p;
 		p.c = 1.0;
+		p.t.a = 2;
 		var string str = "blah";
 		var string[] strarray;
 		strarray.pushback( str );

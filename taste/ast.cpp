@@ -108,7 +108,7 @@ void DataAst::GenerateNameList( std::wstring &varName, std::vector<int> &names )
 	}
 }
 
-void DataAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void DataAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	if ( m_type != -1 )
 	{
@@ -142,25 +142,25 @@ void DataAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	}
 	for (unsigned int i=0; i<m_kids.size(); i++)
 	{
-		m_kids[i]->Generate( oplist, frame );
+		m_kids[i]->Generate( oplist, frame, pkg );
 	}
 }
 
-void BinaryAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void BinaryAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
-	m_left->Generate(oplist, frame);
-	m_right->Generate(oplist, frame);
+	m_left->Generate(oplist, frame, pkg);
+	m_right->Generate(oplist, frame, pkg);
 	int openum[] = { OPC_ADD, OPC_SUB, OPC_MUL, OPC_DIV, OPC_EQU, OPC_LSS, OPC_GTR };
 	AddOp( oplist, openum[m_op] );
 }
 
-void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	StackEntry e;
 	int index = frame.FindEntry( e, m_name );
 	if ( m_index != 0 )
 	{
-		m_index->Generate( oplist, frame );
+		m_index->Generate( oplist, frame, pkg );
 		if ( index == 0x7fffffff )
 		{
 			AddOp( oplist, OPC_PUSHITEMGARRAY, Hash( m_name.c_str() ) );
@@ -198,34 +198,34 @@ void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	}
 }
 
-void ConstIntegerAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void ConstIntegerAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	AddOp( oplist, OPC_PUSHI, m_value );
 }
 
-void ConstFloatingPointAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void ConstFloatingPointAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	AddOp( oplist, OPC_PUSHF, m_value );
 }
 
-void ConstBooleanAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void ConstBooleanAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	AddOp( oplist, OPC_PUSHI, m_value ? 1 : 0 );
 }
 
-void ConstStringAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void ConstStringAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	AddOp( oplist, OPC_PUSHSTR, m_value.c_str() );
 }
 
 
-void NegateAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void NegateAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
-	m_child->Generate(oplist,frame);
+	m_child->Generate(oplist,frame, pkg);
 	AddOp( oplist, OPC_NEG );
 }
 
-void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR, STRING
 						};
@@ -248,7 +248,7 @@ void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	}
 	if ( m_expr )
 	{
-		m_expr->Generate(oplist,frame);
+		m_expr->Generate(oplist,frame, pkg);
 		StackEntry e;
 		int index = frame.FindEntry( e, m_name );
 		if ( index == 0x7fffffff )
@@ -262,7 +262,7 @@ void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	}
 	if ( m_data )
 	{
-		m_data->Generate(oplist,frame);
+		m_data->Generate(oplist,frame,pkg);
 	}
 }
 
@@ -276,7 +276,7 @@ void VarDeclAst::GenerateConstructor( std::vector<int> &oplist, StackFrame &fram
 }
 
 
-void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	frame.StartFunction(m_declaration.size());
 	printf( "%S:\n", m_name.c_str() );
@@ -290,7 +290,7 @@ void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	int startProcFrame = frame.PushFrame();
 	for (unsigned int i=0; i<m_body.size(); i++)
 	{
-		m_body[i]->Generate(oplist,frame);
+		m_body[i]->Generate(oplist,frame,pkg);
 	}
 	int sizeProcFrame = frame.PopFrame();
 	AddOp( oplist, OPC_POPENV );
@@ -302,14 +302,14 @@ void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 }
 
 
-void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
-	m_expr->Generate(oplist,frame);
+	m_expr->Generate(oplist,frame,pkg);
 	StackEntry e;
 	int index = frame.FindEntry( e, m_name );
 	if ( m_arrayIndex != 0 )
 	{
-		m_arrayIndex->Generate( oplist, frame );
+		m_arrayIndex->Generate( oplist, frame, pkg );
 		if ( index == 0x7fffffff )
 		{
 			AddOp(oplist,OPC_POPITEMGARRAY, Hash( m_name.c_str() ) );
@@ -321,31 +321,53 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	}
 	else
 	{
-		std::vector<int> lookup;
-		lookup.push_back( 0 );
-		for (unsigned int i=0; i<m_identVec.size(); i++)
+		if ( e.type == STRUCT )
 		{
-			lookup.push_back( Hash( m_identVec[i].c_str() ) );
-		}
-		if ( m_name == L"super" )
-		{
-			assert(0);
+			std::wstring lookupName = m_identVec[0];
+			for (unsigned int i=1; i<m_identVec.size(); i++)
+			{
+				lookupName += L"." + m_identVec[1];
+			}
+			DefDecl *sd = pkg->FindStruct( e.usertype.c_str() );
+			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
+			if ( index == 0x7fffffff )
+			{
+				AddOp(oplist,OPC_POPITEMG, 2, index, eleIndex );
+			}
+			else
+			{
+				AddOp(oplist,OPC_POPITEM, 2, index, eleIndex );
+			}
+			//vmstructprops *structprops = state
 		}
 		else
-		if ( index == 0x7fffffff )
 		{
-			lookup[0] = Hash( m_name.c_str() );
-			AddOp(oplist,OPC_POPITEMG, lookup );
-		}
-		else
-		{
-			lookup[0] = index;
-			AddOp(oplist,OPC_POPITEM, lookup );
+			std::vector<int> lookup;
+			lookup.push_back( 0 );
+			for (unsigned int i=0; i<m_identVec.size(); i++)
+			{
+				lookup.push_back( Hash( m_identVec[i].c_str() ) );
+			}
+			if ( m_name == L"super" )
+			{
+				assert(0);
+			}
+			else
+			if ( index == 0x7fffffff )
+			{
+				lookup[0] = Hash( m_name.c_str() );
+				AddOp(oplist,OPC_POPITEMG, lookup );
+			}
+			else
+			{
+				lookup[0] = index;
+				AddOp(oplist,OPC_POPITEM, lookup );
+			}
 		}
 	}
 }
 
-void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	StackEntry e;
 	int index = frame.FindEntry( e, m_name );
@@ -372,7 +394,7 @@ void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 
 	for (unsigned int i=0; i<m_callExpr.size(); i++)
 	{
-		m_callExpr[i]->Generate(oplist,frame);
+		m_callExpr[i]->Generate(oplist,frame,pkg);
 	}
 	std::vector<int> lookup;
 	lookup.push_back( 0 );
@@ -402,20 +424,20 @@ void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	//AddOp( oplist, OPC_POP, (int)m_callExpr.size() );
 }
 
-void IfAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void IfAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	unsigned int elsedest = (((unsigned int)this)+1);
 	unsigned int enddest = (((unsigned int)this)+2);
 	unsigned int fdest = m_else.size() ? elsedest : enddest;
 
-	m_conditional->Generate(oplist, frame);
+	m_conditional->Generate(oplist, frame, pkg);
 	int patch0 = AddOp( oplist, OPC_JF, 0 );
 
 	int patch1 = AddOp( oplist, OPC_PUSHENV, 0 );
 	int startIfFrame = frame.PushFrame();
 	for ( unsigned int i=0; i<m_if.size(); i++)
 	{
-		m_if[i]->Generate(oplist,frame);
+		m_if[i]->Generate(oplist,frame,pkg);
 	}
 	int sizeIfFrame = frame.PopFrame();
 	AddOp( oplist, OPC_POPENV );
@@ -430,7 +452,7 @@ void IfAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 		int startElseFrame = frame.PushFrame();
 		for ( unsigned int i=0; i<m_else.size(); i++)
 		{
-			m_else[i]->Generate(oplist, frame);
+			m_else[i]->Generate(oplist, frame,pkg);
 		}
 		int sizeElseFrame = frame.PopFrame();
 		AddOp( oplist, OPC_POPENV );
@@ -444,17 +466,17 @@ void IfAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	}
 }
 
-void WhileAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void WhileAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	int startWhile = oplist.size();
-	m_conditional->Generate(oplist,frame);
+	m_conditional->Generate(oplist,frame,pkg);
 	int patchLoc0 = AddOp( oplist, OPC_JF, 0 );
 		
 	int patchLoc1 = AddOp( oplist, OPC_PUSHENV, 0 );
 	int startWhileFrame = frame.PushFrame();
 	for (unsigned int i=0; i<m_expr.size(); i++)
 	{
-		m_expr[i]->Generate(oplist,frame);
+		m_expr[i]->Generate(oplist,frame,pkg);
 	}
 	int sizeWhileFrame = frame.PopFrame();
 	AddOp( oplist, OPC_POPENV );
@@ -464,12 +486,12 @@ void WhileAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	oplist[patchLoc0+1] = oplist.size();
 }
 
-void ReturnStat::Generate( std::vector<int> &oplist, StackFrame &frame )
+void ReturnStat::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	//assert( !"call convention doesn't work for this, especially within other blocks stackframe needs function start vs current stack" );
 	if ( m_expr )
 	{
-		m_expr->Generate( oplist, frame );
+		m_expr->Generate( oplist, frame, pkg );
 		AddOp( oplist, OPC_POPR );
 	}
 	int delta = frame.DeltaFrame();
@@ -485,20 +507,20 @@ void ReturnStat::Generate( std::vector<int> &oplist, StackFrame &frame )
 	AddOp( oplist, OPC_RET );
 }
 
-void BlockAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void BlockAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	int patchLoc0 = AddOp( oplist, OPC_PUSHENV, 0 );
 	int startBlockFrame = frame.PushFrame();
 	for (unsigned int i=0; i<m_expr.size(); i++)
 	{
-		m_expr[i]->Generate(oplist,frame);
+		m_expr[i]->Generate(oplist,frame,pkg);
 	}
 	int sizeBlockFrame = frame.PopFrame();
 	AddOp( oplist, OPC_PUSHENV, sizeBlockFrame );
 	oplist[patchLoc0+1] = sizeBlockFrame;
 }
 
-void EmbedDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+void EmbedDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	if ( frame.GetDepth() == 1 )
 	{
@@ -506,13 +528,22 @@ void EmbedDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	}
 	else
 	{
-		int index = frame.AddEntry( m_name, (VARTYPE)Hash( m_type.c_str() ) );
+		int index = frame.AddEntry( m_name, STRUCT, m_type.c_str() );
 		AddOp( oplist, OPC_MAKESTRUCT, Hash( m_type.c_str() ), index );
 	}
 }
 
+int DefDecl::FindElementIndex( const wchar_t *name )
+{
+	for ( unsigned int i=0; i<m_flattenedProps.size(); i++ )
+	{
+		if ( m_flattenedProps[i].name == name )
+			return i;
+	}
+	return -1;
+}
 
-void DefDecl::GenerateDef( std::vector<int> &oplist, vmstate &state )
+void DefDecl::GenerateDef( std::vector<int> &oplist, vmstate &state, class Package *pkg )
 {
 	StackFrame frame;
 	frame.PushFrame();
@@ -572,7 +603,7 @@ void DefDecl::GenerateDef( std::vector<int> &oplist, vmstate &state )
 		self.type = OBJECT;
 		self.name = L"self";
 		m_procs[i]->PrependDeclInfo( self );
-		m_procs[i]->Generate(oplist,frame);
+		m_procs[i]->Generate(oplist,frame,pkg);
 	}
 }
 
@@ -656,7 +687,7 @@ void Package::Generate()
 	}
 	for ( unsigned int i=0; i<m_varDecls.size(); i++)
 	{
-		m_varDecls[i]->Generate(oplist,frame);
+		m_varDecls[i]->Generate(oplist,frame,this);
 	}
 	for ( unsigned int i=0; i<m_interfaces.size(); i++)
 	{
@@ -675,7 +706,7 @@ void Package::Generate()
 
 	for ( unsigned int i=0; i<m_defs.size(); i++)
 	{
-		m_defs[i]->GenerateDef( oplist, state );
+		m_defs[i]->GenerateDef( oplist, state, this );
 	}
 
 	int main = -1;
@@ -686,7 +717,7 @@ void Package::Generate()
 		int hash = Hash( m_procs[i]->GetName().c_str() );
 		state.globals[hash].type = VMFUNCTION;
 		state.globals[hash].i = oplist.size();
-		m_procs[i]->Generate(oplist,frame);
+		m_procs[i]->Generate(oplist,frame,this);
 	}
 	RunVMExp( &oplist[0], oplist.size(), 0, state );
 	RunVMExp( &oplist[0], oplist.size(), main, state );
