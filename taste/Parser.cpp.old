@@ -126,22 +126,39 @@ void Parser::Type(int &type) {
 }
 
 void Parser::TypeNotObject(int &type) {
-		if (la->kind == 5 /* "int" */) {
+		switch (la->kind) {
+		case 5 /* "int" */: {
 			Get();
 			type = integer; 
-		} else if (la->kind == 6 /* "bool" */) {
+			break;
+		}
+		case 6 /* "bool" */: {
 			Get();
 			type = boolean; 
-		} else if (la->kind == 7 /* "float" */) {
+			break;
+		}
+		case 7 /* "float" */: {
 			Get();
 			type = floatingpoint; 
-		} else if (la->kind == 9 /* "userptr" */) {
+			break;
+		}
+		case 9 /* "userptr" */: {
 			Get();
 			type = userptr; 
-		} else if (la->kind == 10 /* "string" */) {
+			break;
+		}
+		case 10 /* "string" */: {
 			Get();
 			type = stringtype; 
-		} else SynErr(47);
+			break;
+		}
+		case _ident: {
+			Get();
+			type = Hash( t->val ); 
+			break;
+		}
+		default: SynErr(47); break;
+		}
 }
 
 void Parser::ReturnType(int &type) {
@@ -430,24 +447,12 @@ void Parser::ProcDecl(ProcDeclAst* &procDecl) {
 			if (la->kind == 16 /* "var" */) {
 				VarDecl(varDecl);
 				procDecl->AddBody( varDecl ); 
-			} else if (la->kind == 42 /* "struct" */) {
-				StructDefDecl(structDecl);
-				procDecl->AddStructDecl( structDecl ); 
 			} else {
 				Stat(stat);
 				procDecl->AddBody( stat ); 
 			}
 		}
 		Expect(15 /* "}" */);
-}
-
-void Parser::StructDefDecl(EmbedDeclAst *&embed) {
-		Expect(42 /* "struct" */);
-		Expect(_ident);
-		embed = new EmbedDeclAst( t->val ); 
-		Expect(_ident);
-		embed->SetName( t->val ); 
-		Expect(21 /* ";" */);
 }
 
 void Parser::Stat(AstBase *&stat) {
@@ -459,8 +464,8 @@ void Parser::Stat(AstBase *&stat) {
 			Expect(28 /* ")" */);
 			IfAst *ifstat = new IfAst( expr ); stat = ifstat; 
 			Expect(13 /* "{" */);
-			while (StartOf(5)) {
-				if (StartOf(6)) {
+			while (StartOf(4)) {
+				if (StartOf(5)) {
 					Stat(substat);
 					ifstat->AddIf( substat ); 
 				} else {
@@ -472,8 +477,8 @@ void Parser::Stat(AstBase *&stat) {
 			if (la->kind == 36 /* "else" */) {
 				Get();
 				Expect(13 /* "{" */);
-				while (StartOf(5)) {
-					if (StartOf(6)) {
+				while (StartOf(4)) {
+					if (StartOf(5)) {
 						Stat(substat);
 						ifstat->AddElse( substat ); 
 					} else {
@@ -497,8 +502,8 @@ void Parser::Stat(AstBase *&stat) {
 			Expect(28 /* ")" */);
 			WhileAst *whilestat = new WhileAst( expr ); stat = whilestat; 
 			Expect(13 /* "{" */);
-			while (StartOf(5)) {
-				if (StartOf(6)) {
+			while (StartOf(4)) {
+				if (StartOf(5)) {
 					Stat(substat);
 					whilestat->AddExpr( substat ); 
 				} else {
@@ -510,8 +515,8 @@ void Parser::Stat(AstBase *&stat) {
 		} else if (la->kind == 13 /* "{" */) {
 			Get();
 			BlockAst *blockstat = new BlockAst; stat = blockstat; 
-			while (StartOf(5)) {
-				if (StartOf(6)) {
+			while (StartOf(4)) {
+				if (StartOf(5)) {
 					Stat(substat);
 					blockstat->AddExpr( substat ); 
 				} else {
@@ -583,16 +588,13 @@ void Parser::Def(DefDecl *&def) {
 			def->SetExtends( t->val ); 
 		}
 		Expect(13 /* "{" */);
-		while (StartOf(7)) {
+		while (la->kind == 16 /* "var" */ || la->kind == 31 /* "function" */ || la->kind == 39 /* "embed" */) {
 			if (la->kind == 16 /* "var" */) {
 				VarDecl(varDecl);
 				def->AddVarDecl( varDecl ); 
 			} else if (la->kind == 39 /* "embed" */) {
 				EmbedDecl(embedDecl);
 				def->AddEmbedDecl( embedDecl ); 
-			} else if (la->kind == 42 /* "struct" */) {
-				StructDefDecl(embedDecl);
-				def->AddStructDecl( embedDecl ); 
 			} else {
 				ProcDecl(procDecl);
 				def->AddProcDecl( procDecl ); 
@@ -608,14 +610,9 @@ void Parser::Struct(DefDecl *&def) {
 		Expect(_ident);
 		def = new DefDecl( t->val ); 
 		Expect(13 /* "{" */);
-		while (la->kind == 16 /* "var" */ || la->kind == 42 /* "struct" */) {
-			if (la->kind == 16 /* "var" */) {
-				VarDecl(varDecl);
-				def->AddVarDecl( varDecl ); 
-			} else {
-				StructDefDecl(embedDecl);
-				def->AddStructDecl( embedDecl ); 
-			}
+		while (la->kind == 16 /* "var" */) {
+			VarDecl(varDecl);
+			def->AddVarDecl( varDecl ); 
 		}
 		Expect(15 /* "}" */);
 		Expect(21 /* ";" */);
@@ -658,7 +655,7 @@ void Parser::Taste() {
 		Expect(_ident);
 		package = new Package( t->val ); 
 		Expect(13 /* "{" */);
-		while (StartOf(8)) {
+		while (StartOf(6)) {
 			if (la->kind == 40 /* "def" */) {
 				Def(defDecl);
 				package->AddDefDecl( defDecl ); 
@@ -795,15 +792,13 @@ bool Parser::StartOf(int s) {
 	const bool T = true;
 	const bool x = false;
 
-	static bool set[9][47] = {
+	static bool set[7][47] = {
 		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
 		{x,x,x,x, x,T,T,T, T,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
 		{x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,T, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-		{x,x,x,x, x,T,T,T, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
-		{x,T,x,x, x,x,x,x, x,x,x,x, x,T,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,T,T,x, x,x,T,x, x,x,x},
+		{x,T,x,x, x,T,T,T, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,T,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,T,T,x, x,x,x,x, x,x,x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,T,T,x, x,x,x,x, x,x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,T, x,x,T,x, x,x,x},
 		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, T,x,T,T, x,x,x}
 	};
 

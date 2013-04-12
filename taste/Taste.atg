@@ -71,6 +71,7 @@ TypeNotObject<int &type>
  | "float"						(. type = floatingpoint; .)
  | "userptr"					(. type = userptr; .)
  | "string"						(. type = stringtype; .)
+ | ident						(. type = Hash( t->val ); .)
  ).
 
 /*------------------------------------------------------------------------*/
@@ -281,7 +282,7 @@ ExprList<AstVec &vec>			(. AstBase *expr; .)
 		Expr<expr>				(. vec.push_back( expr ); .)
 	}.
 /*------------------------------------------------------------------------*/
-ProcDecl<ProcDeclAst* &procDecl>		(. VarDeclAst *varDecl; int type; AstBase *stat; DeclVec declVec; EmbedDeclAst *structDecl; .)
+ProcDecl<ProcDeclAst* &procDecl>		(. VarDeclAst *varDecl; int type; AstBase *stat; DeclVec declVec; .)
 = 
 	"function"							(. procDecl = new ProcDeclAst(); .)
 	ReturnType<type>						(. procDecl->SetReturnType( type ); .)
@@ -294,8 +295,6 @@ ProcDecl<ProcDeclAst* &procDecl>		(. VarDeclAst *varDecl; int type; AstBase *sta
 	'{'                    
 	{ 
 		VarDecl<varDecl>				(. procDecl->AddBody( varDecl ); .)
-		| 
-		StructDefDecl<structDecl>		(. procDecl->AddBody( structDecl ); .)
 		| 
 		Stat<stat>						(. procDecl->AddBody( stat ); .)
 	}
@@ -443,31 +442,19 @@ Def<DefDecl *&def>				(. VarDeclAst *varDecl; ProcDeclAst *procDecl; EmbedDeclAs
 			| 
 			EmbedDecl<embedDecl>	(. def->AddEmbedDecl( embedDecl ); .)
 			| 
-			StructDefDecl<embedDecl>	(. def->AddStructDecl( embedDecl ); .)
-			| 
 			ProcDecl<procDecl>		(. def->AddProcDecl( procDecl ); .)
 		}
 	'}'
 	';'
 	.
 
-StructDefDecl<EmbedDeclAst *&embed>
-=
-	"struct"
-	ident						(. embed = new EmbedDeclAst( t->val ); .)
-	ident						(. embed->SetName( t->val ); .)
-	";"
-	.
-
-Struct<DefDecl *&def>				(. VarDeclAst *varDecl; ProcDeclAst *procDecl; EmbedDeclAst *embedDecl; .)
+Struct<DefDecl *&def>				(. VarDeclAst *varDecl; .)
 =
 	"struct"
 	ident							(. def = new DefDecl( t->val ); .)
 	'{'
 		{
 			VarDecl<varDecl>		(. def->AddVarDecl( varDecl ); .)
-			| 
-			StructDefDecl<embedDecl>	(. def->AddStructDecl( embedDecl ); .)
 		}
 	'}'
 	';'

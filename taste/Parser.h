@@ -129,7 +129,6 @@ int // operators
 	void Declaration(DeclInfo &decl);
 	void DeclarationList(DeclVec &vec);
 	void ProcDecl(ProcDeclAst* &procDecl);
-	void StructDefDecl(EmbedDeclAst *&embed);
 	void Stat(AstBase *&stat);
 	void Term(AstBase* &term);
 	void EmbedDecl(EmbedDeclAst *&embed);

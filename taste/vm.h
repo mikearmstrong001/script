@@ -280,6 +280,8 @@ enum VARTYPE
 	OBJECTARRAY,
 	USERPTRARRAY,
 	STRINGARRAY,
+
+	MAX_VARTYPE,
 };
 
 struct vmobject;
@@ -311,12 +313,15 @@ struct var
 	};
 };
 
+#pragma warning(push)
+#pragma warning(disable: 4200)
 struct vmstruct
 {
 	int m_type;
 	int m_size;
 	var m_data[0];
 };
+#pragma warning(pop)
 
 
 struct vmobject

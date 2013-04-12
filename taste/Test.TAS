@@ -3,6 +3,7 @@ package Test {
 	var int[] items0;
 	var float[] items1;
 	var object[] items2;
+	var t1 items3;
 
 	interface CanCreate
 	{
@@ -22,7 +23,7 @@ package Test {
 
 	struct t2
 	{
-		struct t1 t;
+		var t1 t;
 		var float c;
 	};
 
@@ -82,8 +83,10 @@ package Test {
 	
 	function void Main()
 	{
-		struct t2 p;
+		var t2 p;
 		p.c = 1.0;
+		// doesn't work until all global vars are listed in package 
+		// items3.a = 1;
 		p.t.a = 2;
 		var string str = "blah";
 		var string[] strarray;

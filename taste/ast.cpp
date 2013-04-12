@@ -227,42 +227,57 @@ void NegateAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pac
 
 void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
-	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR, STRING
-						};
-	VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, INTEGERARRAY, USERPTRARRAY, STRINGARRAY
-						};
-	if ( frame.GetDepth() == 1 )
+	if ( ((unsigned int)m_type) >= MAX_VARTYPE )
 	{
-		AddOp( oplist, OPC_MAKEVARG, m_isarray ? typemaparray[m_type] : typemap[m_type], Hash( m_name.c_str() ), m_prototype.empty() ? 0 : Hash( m_prototype.c_str() ) );
-	}
-	else
-	{
-		int index = frame.AddEntry( m_name, m_isarray ? typemaparray[m_type] : typemap[m_type] );
-		AddOp( oplist, OPC_MAKEVAR, m_isarray ? typemaparray[m_type] : typemap[m_type], index, m_prototype.empty() ? 0 : Hash( m_prototype.c_str() ) );
-		if ( !m_prototype.empty() )
+		if ( frame.GetDepth() == 1 )
 		{
-			AddOp( oplist, OPC_PUSHITEM, 1, index );
-			AddOp( oplist, OPC_CALLG, Hash( (m_prototype + L":~creator").c_str() ) );
-			//AddOp( oplist, OPC_POP, 1 );
-		}
-	}
-	if ( m_expr )
-	{
-		m_expr->Generate(oplist,frame, pkg);
-		StackEntry e;
-		int index = frame.FindEntry( e, m_name );
-		if ( index == 0x7fffffff )
-		{
-			AddOp( oplist, OPC_POPITEMG, 1, Hash( m_name.c_str() ) );
+			AddOp( oplist, OPC_MAKESTRUCTG, m_type, Hash(m_name.c_str()) );
 		}
 		else
 		{
-			AddOp( oplist, OPC_POPITEM, 1, index );
+			int index = frame.AddEntry( m_name, STRUCT, m_type );
+			AddOp( oplist, OPC_MAKESTRUCT, m_type, index );
 		}
 	}
-	if ( m_data )
+	else
 	{
-		m_data->Generate(oplist,frame,pkg);
+		VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR, STRING
+							};
+		VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, OBJECTARRAY, INTEGERARRAY, USERPTRARRAY, STRINGARRAY
+							};
+		if ( frame.GetDepth() == 1 )
+		{
+			AddOp( oplist, OPC_MAKEVARG, m_isarray ? typemaparray[m_type] : typemap[m_type], Hash( m_name.c_str() ), m_prototype.empty() ? 0 : Hash( m_prototype.c_str() ) );
+		}
+		else
+		{
+			int index = frame.AddEntry( m_name, m_isarray ? typemaparray[m_type] : typemap[m_type] );
+			AddOp( oplist, OPC_MAKEVAR, m_isarray ? typemaparray[m_type] : typemap[m_type], index, m_prototype.empty() ? 0 : Hash( m_prototype.c_str() ) );
+			if ( !m_prototype.empty() )
+			{
+				AddOp( oplist, OPC_PUSHITEM, 1, index );
+				AddOp( oplist, OPC_CALLG, Hash( (m_prototype + L":~creator").c_str() ) );
+				//AddOp( oplist, OPC_POP, 1 );
+			}
+		}
+		if ( m_expr )
+		{
+			m_expr->Generate(oplist,frame, pkg);
+			StackEntry e;
+			int index = frame.FindEntry( e, m_name );
+			if ( index == 0x7fffffff )
+			{
+				AddOp( oplist, OPC_POPITEMG, 1, Hash( m_name.c_str() ) );
+			}
+			else
+			{
+				AddOp( oplist, OPC_POPITEM, 1, index );
+			}
+		}
+		if ( m_data )
+		{
+			m_data->Generate(oplist,frame,pkg);
+		}
 	}
 }
 
@@ -328,7 +343,7 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pac
 			{
 				lookupName += L"." + m_identVec[1];
 			}
-			DefDecl *sd = pkg->FindStruct( e.usertype.c_str() );
+			DefDecl *sd = pkg->FindStruct( e.usertype );
 			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
 			if ( index == 0x7fffffff )
 			{
@@ -612,28 +627,26 @@ void DefDecl::GenerateProps( class Package *pkg, vmstate &state )
 	if ( m_flattenedProps.size() )
 		return;
 
-	for (unsigned int i=0; i<m_structs.size(); i++)
-	{
-		DefDecl *s = pkg->FindStruct( m_structs[i]->GetType().c_str() );
-		s->GenerateProps( pkg, state );
-	}
-
 	for (unsigned int i=0; i<m_varDecls.size(); i++)
 	{
-		Element e;
-		e.name = m_varDecls[i]->GetNameWC();
-		e.varInfo = m_varDecls[i];
-		m_flattenedProps.push_back( e );
-	}
-	for (unsigned int i=0; i<m_structs.size(); i++)
-	{
-		const DefDecl *s = pkg->FindStruct( m_structs[i]->GetType().c_str() );
-		std::vector< Element > const &childProps = s->GetProps();
-		for (unsigned int j=0; j<childProps.size(); j++)
+		if ( (unsigned int)m_varDecls[i]->GetType() >= OPC_MAX )
+		{
+			DefDecl *s = pkg->FindStruct( m_varDecls[i]->GetType() );
+			s->GenerateProps( pkg, state );
+			std::vector< Element > const &childProps = s->GetProps();
+			for (unsigned int j=0; j<childProps.size(); j++)
+			{
+				Element e;
+				e.name = m_varDecls[i]->GetName() + std::wstring(L".") + childProps[j].name;
+				e.varInfo = childProps[j].varInfo;
+				m_flattenedProps.push_back( e );
+			}
+		}
+		else
 		{
 			Element e;
-			e.name = m_structs[i]->GetName() + std::wstring(L".") + childProps[j].name;
-			e.varInfo = childProps[j].varInfo;
+			e.name = m_varDecls[i]->GetNameWC();
+			e.varInfo = m_varDecls[i];
 			m_flattenedProps.push_back( e );
 		}
 	}
@@ -662,6 +675,17 @@ DefDecl *Package::FindStruct( const wchar_t *name )
 	return NULL;
 }
 
+DefDecl *Package::FindStruct( int name )
+{
+	for (unsigned int i=0; i<m_structs.size(); i++)
+	{
+		if ( Hash(m_structs[i]->GetName().c_str()) == name )
+		{
+			return m_structs[i];
+		}
+	}
+	return NULL;
+}
 
 void Package::Generate()
 {

@@ -35,7 +35,7 @@ struct StackEntry
 {
 	std::wstring name;
 	VARTYPE type;
-	std::wstring usertype;
+	int usertype;
 	int depth;
 };
 
@@ -85,7 +85,19 @@ public:
 		return pos;
 	}
 
-	int AddEntry( const std::wstring &n, VARTYPE type, const std::wstring &usertype = L"" )
+	int AddEntry( const std::wstring &n, VARTYPE type, const std::wstring &usertype )
+	{
+		StackEntry e;
+		e.name = n;
+		e.type = type;
+		e.usertype = Hash(usertype.c_str());
+		e.depth = m_return.size();
+		int rel = m_active.size() - m_return[m_return.size()-1];
+		m_active.push_back( e );
+		return rel;
+	}
+
+	int AddEntry( const std::wstring &n, VARTYPE type, int usertype = 0 )
 	{
 		StackEntry e;
 		e.name = n;
@@ -286,6 +298,7 @@ public:
 	void SetIsArray() { m_isarray = true; }
 
 	wchar_t const *GetNameWC() const { return m_name.c_str(); }
+	std::wstring const &GetName() const { return m_name; }
 	int	GetType() const { return m_type; }
 
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
@@ -409,7 +422,6 @@ class DefDecl
 	std::vector< VarDeclAst* > m_varDecls;
 	std::vector< ProcDeclAst* > m_procs;
 	std::vector< EmbedDeclAst* > m_embeds;
-	std::vector< EmbedDeclAst* > m_structs;
 
 	struct Element
 	{
@@ -428,7 +440,6 @@ public:
 	void AddVarDecl( VarDeclAst *v ) { m_varDecls.push_back(v); }
 	void AddProcDecl( ProcDeclAst *p ) { m_procs.push_back(p); }
 	void AddEmbedDecl( EmbedDeclAst *p ) { m_embeds.push_back(p); }
-	void AddStructDecl( EmbedDeclAst *p ) { m_structs.push_back(p); }
 
 	std::wstring const &GetName() const { return m_name; }
 	std::wstring const &GetExtends() const { return m_extends; }
@@ -490,6 +501,7 @@ public:
 	Package( const wchar_t *name ) : m_name(name) {}
 
 	DefDecl *FindStruct( const wchar_t *name );
+	DefDecl *FindStruct( int name );
 
 	void AddDefDecl( DefDecl *v ) { m_defs.push_back(v); }
 	void AddStructDecl( DefDecl *v ) { m_structs.push_back(v); }

@@ -1297,6 +1297,57 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 			}
 			break;
+		case OPC_MAKESTRUCTG:
+			{
+				int type = ops[pc++];
+				int index = ops[pc++];
+				var &item = state.globals[index];
+				vmstructprops *props = state.structProps[type];
+				vmstruct *structmem = (vmstruct *)malloc( sizeof(vmstruct) + sizeof(var)*props->properties.size() );
+				item.type = STRUCT;
+				item.s = structmem;
+				item.s->m_type = type;
+				item.s->m_size = props->properties.size();
+				for ( int i=0; i<props->properties.size(); i++)
+				{
+					var &curitem = item.s->m_data[i];
+					curitem.type = (VARTYPE)props->properties[i].itemType;
+					if ( curitem.type == OBJECT )
+					{
+						curitem.o = new vmobject;
+					}
+					else
+					if ( curitem.type == INTEGERARRAY )
+					{
+						curitem.iArrayPtr = new vmarrayvar<int>;
+					}
+					else
+					if ( curitem.type == FLOATINGPOINTARRAY )
+					{
+						curitem.fArrayPtr = new vmarrayvar<float>;
+					}
+					else
+					if ( curitem.type == OBJECTARRAY )
+					{
+						curitem.oArrayPtr = new vmarrayvar<vmobject*>;
+					}
+					else
+					if ( curitem.type == USERPTRARRAY )
+					{
+						curitem.uArrayPtr = new vmarrayvar<void*>;
+					}
+					else
+					if ( curitem.type == STRINGARRAY )
+					{
+						curitem.strArrayPtr = new vmarrayvar<vmstring*>;
+					}
+					else
+					{
+						curitem.o = 0;
+					}
+				}
+			}
+			break;
 		default:
 			CEXCEPTION_ERROR( "unimplemented OP" );
 			break;
