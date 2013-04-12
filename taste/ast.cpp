@@ -498,7 +498,21 @@ void BlockAst::Generate( std::vector<int> &oplist, StackFrame &frame )
 	oplist[patchLoc0+1] = sizeBlockFrame;
 }
 
-void DefDecl::Generate( std::vector<int> &oplist, vmstate &state )
+void EmbedDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame )
+{
+	if ( frame.GetDepth() == 1 )
+	{
+		AddOp( oplist, OPC_MAKESTRUCTG, Hash(m_name.c_str()), Hash( m_type.c_str() ) );
+	}
+	else
+	{
+		int index = frame.AddEntry( m_name, (VARTYPE)Hash( m_type.c_str() ) );
+		AddOp( oplist, OPC_MAKESTRUCT, Hash( m_type.c_str() ), index );
+	}
+}
+
+
+void DefDecl::GenerateDef( std::vector<int> &oplist, vmstate &state )
 {
 	StackFrame frame;
 	frame.PushFrame();
@@ -511,7 +525,7 @@ void DefDecl::Generate( std::vector<int> &oplist, vmstate &state )
 		for ( unsigned int i=0; i<m_embeds.size(); i++)
 		{
 			AddOp( oplist, OPC_PUSHTOP );
-			AddOp( oplist, OPC_CALLG, Hash( (m_embeds[i]->GetName() + std::wstring(L":~type_creator")).c_str() ) );
+			AddOp( oplist, OPC_CALLG, Hash( (m_embeds[i]->GetType() + std::wstring(L":~type_creator")).c_str() ) );
 		}
 		for ( unsigned int i=0; i<m_procs.size(); i++)
 		{
@@ -539,7 +553,7 @@ void DefDecl::Generate( std::vector<int> &oplist, vmstate &state )
 		for ( unsigned int i=0; i<m_embeds.size(); i++)
 		{
 			AddOp( oplist, OPC_PUSHTOP );
-			AddOp( oplist, OPC_CALLG, Hash( (m_embeds[i]->GetName() + std::wstring(L":~creator")).c_str() ) );
+			AddOp( oplist, OPC_CALLG, Hash( (m_embeds[i]->GetType() + std::wstring(L":~creator")).c_str() ) );
 		}
 		for ( unsigned int i=0; i<m_varDecls.size(); i++)
 		{
@@ -562,12 +576,74 @@ void DefDecl::Generate( std::vector<int> &oplist, vmstate &state )
 	}
 }
 
+void DefDecl::GenerateProps( class Package *pkg, vmstate &state )
+{
+	if ( m_flattenedProps.size() )
+		return;
+
+	for (unsigned int i=0; i<m_structs.size(); i++)
+	{
+		DefDecl *s = pkg->FindStruct( m_structs[i]->GetType().c_str() );
+		s->GenerateProps( pkg, state );
+	}
+
+	for (unsigned int i=0; i<m_varDecls.size(); i++)
+	{
+		Element e;
+		e.name = m_varDecls[i]->GetNameWC();
+		e.varInfo = m_varDecls[i];
+		m_flattenedProps.push_back( e );
+	}
+	for (unsigned int i=0; i<m_structs.size(); i++)
+	{
+		const DefDecl *s = pkg->FindStruct( m_structs[i]->GetType().c_str() );
+		std::vector< Element > const &childProps = s->GetProps();
+		for (unsigned int j=0; j<childProps.size(); j++)
+		{
+			Element e;
+			e.name = m_structs[i]->GetName() + std::wstring(L".") + childProps[j].name;
+			e.varInfo = childProps[j].varInfo;
+			m_flattenedProps.push_back( e );
+		}
+	}
+	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, OBJECT, VOID, USERPTR, STRING
+						};
+	vmstructprops *vmstruct = new vmstructprops;
+	state.structProps[Hash( m_name.c_str() )] = vmstruct;
+	for (unsigned int i=0; i<m_flattenedProps.size(); i++)
+	{
+		vmelement vme;
+		vme.itemName = Hash( m_flattenedProps[i].name.c_str() );
+		vme.itemType = typemap[m_flattenedProps[i].varInfo->GetType()];
+		vmstruct->properties.push_back( vme );
+	}
+}
+
+DefDecl *Package::FindStruct( const wchar_t *name )
+{
+	for (unsigned int i=0; i<m_structs.size(); i++)
+	{
+		if ( m_structs[i]->GetName() == name )
+		{
+			return m_structs[i];
+		}
+	}
+	return NULL;
+}
+
+
 void Package::Generate()
 {
 	StackFrame frame;
 	frame.PushFrame();
 
 	vmstate state;
+
+	for ( unsigned int i=0; i<m_defs.size(); i++)
+	{
+		m_structs[i]->GenerateProps( this, state );
+	}
+
 
 	std::vector<int> oplist;
 	for ( unsigned int i=0; i<m_defs.size(); i++)
@@ -599,7 +675,7 @@ void Package::Generate()
 
 	for ( unsigned int i=0; i<m_defs.size(); i++)
 	{
-		m_defs[i]->Generate( oplist, state );
+		m_defs[i]->GenerateDef( oplist, state );
 	}
 
 	int main = -1;

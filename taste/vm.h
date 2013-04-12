@@ -40,6 +40,8 @@ enum OPCODES
 	OPC_POPITEMARRAY,
 	OPC_POPITEMGARRAY,
 	OPC_PUSHSUPER,
+	OPC_MAKESTRUCT,
+	OPC_MAKESTRUCTG,
 
 	OPC_MAX
 };
@@ -237,14 +239,15 @@ public:
 	}
 };
 
-class string
+
+class vmstring
 {
 	wchar_t m_chars[16];
 	int m_len;
 
 public:
 
-	string( wchar_t *s, int len )
+	vmstring( wchar_t *s, int len )
 	{
 		if ( len < 15 )
 		{
@@ -269,6 +272,7 @@ enum VARTYPE
 	VOID,
 	USERPTR,
 	STRING,
+	STRUCT,
 	VMFUNCTION,
 	CFUNCTION,
 	INTEGERARRAY,
@@ -278,10 +282,10 @@ enum VARTYPE
 	STRINGARRAY,
 };
 
-struct object;
+struct vmobject;
 
 template<class T>
-struct arrayvar
+struct vmarrayvar
 {
 	GrowingArray<T> m_items;
 };
@@ -294,24 +298,33 @@ struct var
 	{
 		int i;
 		float f;
-		object *o;
+		vmobject *o;
 		void *u;
-		string *str;
-		arrayvar<int> *iArrayPtr;
-		arrayvar<float> *fArrayPtr;
-		arrayvar<object*> *oArrayPtr;
-		arrayvar<void*> *uArrayPtr;
-		arrayvar<string*> *strArrayPtr;
+		vmstring *str;
+		struct vmstruct *s;
+		vmarrayvar<int> *iArrayPtr;
+		vmarrayvar<float> *fArrayPtr;
+		vmarrayvar<vmobject*> *oArrayPtr;
+		vmarrayvar<void*> *uArrayPtr;
+		vmarrayvar<vmstring*> *strArrayPtr;
 		bool (*cfunc)( struct vmstate &state );
 	};
 };
 
-struct object
+struct vmstruct
+{
+	int m_type;
+	int m_size;
+	var m_data[0];
+};
+
+
+struct vmobject
 {
 	int prototype;
 	Map<var> m_tbl;
 
-	object() : prototype(-1) {}
+	vmobject() : prototype(-1) {}
 };
 
 inline int Hash( const wchar_t *v )
@@ -362,6 +375,17 @@ struct vminterface
 	GrowingArray<int> interfaceFunctions;
 };
 
+struct vmelement
+{
+	int itemName;
+	int itemType;
+};
+
+struct vmstructprops
+{
+	GrowingArray<vmelement> properties;
+};
+
 struct vmstate
 {
 	FixedStack<var,1024> stack;
@@ -369,6 +393,7 @@ struct vmstate
 	FixedStack<int,32> pcStack;
 	Map<var> globals;
 	Map<vminterface> ifaces;
+	Map<vmstructprops*> structProps;
 	var rv;
 
 	var const &GetArg( int index ) const

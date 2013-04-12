@@ -449,8 +449,8 @@ Scanner::~Scanner() {
 void Scanner::Init() {
 	EOL    = '\n';
 	eofSym = 0;
-	maxT = 44;
-	noSym = 44;
+	maxT = 45;
+	noSym = 45;
 	int i;
 	for (i = 65; i <= 90; ++i) start.set(i, 6);
 	for (i = 97; i <= 122; ++i) start.set(i, 6);
@@ -493,8 +493,9 @@ void Scanner::Init() {
 	keywords.set(L"embed", 39);
 	keywords.set(L"def", 40);
 	keywords.set(L"extends", 41);
-	keywords.set(L"interface", 42);
-	keywords.set(L"package", 43);
+	keywords.set(L"struct", 42);
+	keywords.set(L"interface", 43);
+	keywords.set(L"package", 44);
 
 
 	tvalLength = 128;

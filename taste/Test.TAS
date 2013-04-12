@@ -14,6 +14,18 @@ package Test {
 		function void onUpdate( object self, float dt );
 	};
 
+	struct t1
+	{
+		var int a;
+		var int b;
+	};
+
+	struct t2
+	{
+		struct t1 t;
+		var float c;
+	};
+
 	def foo
 	{
 		var float[] x;
@@ -70,6 +82,8 @@ package Test {
 	
 	function void Main()
 	{
+		struct t2 p;
+		p.c = 1.0;
 		var string str = "blah";
 		var string[] strarray;
 		strarray.pushback( str );

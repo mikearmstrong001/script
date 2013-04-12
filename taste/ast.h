@@ -282,7 +282,10 @@ public:
 	void SetExpr( AstBase *expr ) { m_expr = expr; }
 	void SetData( DataAst *data ) { m_data = data; }
 	void SetIsArray() { m_isarray = true; }
+
 	wchar_t const *GetNameWC() const { return m_name.c_str(); }
+	int	GetType() const { return m_type; }
+
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
 	virtual void GenerateConstructor( std::vector<int> &oplist, StackFrame &frame );
 };
@@ -382,13 +385,19 @@ public:
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
 };
 
-class EmbedDeclAst
+class EmbedDeclAst : public AstBase
 {
+	std::wstring m_type;
 	std::wstring m_name;
 public:
-	EmbedDeclAst( const wchar_t *name ) : m_name(name) {}
+	EmbedDeclAst( const wchar_t *type ) : m_type(type) {}
 
-	std::wstring const &GetName() { return m_name; }
+	void SetName( const wchar_t *name ) { m_name = name; }
+
+	std::wstring const &GetType() const { return m_type; }
+	std::wstring const &GetName() const { return m_name; }
+
+	virtual void Generate( std::vector<int> &oplist, StackFrame &frame );
 };
 
 class DefDecl
@@ -398,6 +407,18 @@ class DefDecl
 	std::vector< VarDeclAst* > m_varDecls;
 	std::vector< ProcDeclAst* > m_procs;
 	std::vector< EmbedDeclAst* > m_embeds;
+	std::vector< EmbedDeclAst* > m_structs;
+
+	struct Element
+	{
+		std::wstring name;
+		VarDeclAst* varInfo;
+	};
+
+	std::vector< Element > m_flattenedProps;
+
+	int FindIndex( const wchar_t *name );
+
 public:
 
 	DefDecl( const wchar_t *name ) : m_name(name) {}
@@ -406,11 +427,15 @@ public:
 	void AddVarDecl( VarDeclAst *v ) { m_varDecls.push_back(v); }
 	void AddProcDecl( ProcDeclAst *p ) { m_procs.push_back(p); }
 	void AddEmbedDecl( EmbedDeclAst *p ) { m_embeds.push_back(p); }
+	void AddStructDecl( EmbedDeclAst *p ) { m_structs.push_back(p); }
 
-	std::wstring const &GetName() { return m_name; }
-	std::wstring const &GetExtends() { return m_extends; }
+	std::wstring const &GetName() const { return m_name; }
+	std::wstring const &GetExtends() const { return m_extends; }
 
-	virtual void Generate( std::vector<int> &oplist, vmstate &state );
+	std::vector< Element > const &GetProps() const { return m_flattenedProps; }
+
+	virtual void GenerateDef( std::vector<int> &oplist, vmstate &state );
+	virtual void GenerateProps( class Package *pkg, vmstate &state );
 };
 
 class ProcDefDeclAst
@@ -454,13 +479,17 @@ class Package
 	std::vector< VarDeclAst* > m_varDecls;
 	std::vector< ProcDeclAst* > m_procs;
 	std::vector< DefDecl* > m_defs;
+	std::vector< DefDecl* > m_structs;
 	std::vector< InterfaceDecl* > m_interfaces;
 
 public:
 
 	Package( const wchar_t *name ) : m_name(name) {}
 
+	DefDecl *FindStruct( const wchar_t *name );
+
 	void AddDefDecl( DefDecl *v ) { m_defs.push_back(v); }
+	void AddStructDecl( DefDecl *v ) { m_structs.push_back(v); }
 	void AddInterfaceDecl( InterfaceDecl *v ) { m_interfaces.push_back(v); }
 	void AddVarDecl( VarDeclAst *v ) { m_varDecls.push_back(v); }
 	void AddProcDecl( ProcDeclAst *p ) { m_procs.push_back(p); }

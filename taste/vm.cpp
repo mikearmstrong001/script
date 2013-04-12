@@ -1,6 +1,7 @@
 #include "vm.h"
 #include <memory.h>
 #include <stdio.h>
+#include <malloc.h>
 
 const char *opnames[] =
 {
@@ -39,12 +40,14 @@ const char *opnames[] =
 	"OPC_POPITEMARRAY",
 	"OPC_POPITEMGARRAY",
 	"OPC_PUSHSUPER",
+	"OPC_MAKESTRUCT",
+	"OPC_MAKESTRUCTG",
 };
 
-static bool HasVar( object const *top, int key, vmstate &state )
+static bool HasVar( vmobject const *top, int key, vmstate &state )
 {
 	// first check object;
-	const object *o = top;
+	const vmobject *o = top;
 	while ( o )
 	{
 		Map<var>::ConstIterator f = o->m_tbl.cfind( key );
@@ -311,10 +314,10 @@ bool printffloat( vmstate &state )
 	return false;
 }
 
-static const var &FindVar( object const *top, int key, vmstate &state )
+static const var &FindVar( vmobject const *top, int key, vmstate &state )
 {
 	// first check object;
-	const object *o = top;
+	const vmobject *o = top;
 	while ( o )
 	{
 		Map<var>::ConstIterator f = o->m_tbl.cfind( key );
@@ -349,7 +352,7 @@ static const var &FindVar( object const *top, int key, vmstate &state )
 	return NULLVAR;
 }
 
-static object *CreateEntries( const int *ops, int &pc, object *o, int entries )
+static vmobject *CreateEntries( const int *ops, int &pc, vmobject *o, int entries )
 {
 	for (int i=0; i<entries; i++)
 	{
@@ -359,7 +362,7 @@ static object *CreateEntries( const int *ops, int &pc, object *o, int entries )
 		{
 			var &tv = o->m_tbl[key];
 			tv.type = OBJECT;
-			tv.o = new object;
+			tv.o = new vmobject;
 			o = tv.o;
 		}
 		else
@@ -372,7 +375,7 @@ static object *CreateEntries( const int *ops, int &pc, object *o, int entries )
 			else
 			{
 				tv.type = OBJECT;
-				tv.o = new object;
+				tv.o = new vmobject;
 				o = tv.o;
 			}
 		}
@@ -380,7 +383,7 @@ static object *CreateEntries( const int *ops, int &pc, object *o, int entries )
 	return o;
 }
 
-static void PushEntry( const int *ops, int &pc, object *o, int entries, vmstate &state )
+static void PushEntry( const int *ops, int &pc, vmobject *o, int entries, vmstate &state )
 {
 	for (int i=0; i<entries; i++)
 	{
@@ -500,7 +503,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				item.type = type;
 				if ( type == OBJECT )
 				{
-					item.o = new object;
+					item.o = new vmobject;
 					if ( prototype )
 					{
 						item.o->prototype = prototype;
@@ -509,27 +512,27 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				else
 				if ( type == INTEGERARRAY )
 				{
-					item.iArrayPtr = new arrayvar<int>;
+					item.iArrayPtr = new vmarrayvar<int>;
 				}
 				else
 				if ( type == FLOATINGPOINTARRAY )
 				{
-					item.fArrayPtr = new arrayvar<float>;
+					item.fArrayPtr = new vmarrayvar<float>;
 				}
 				else
 				if ( type == OBJECTARRAY )
 				{
-					item.oArrayPtr = new arrayvar<object*>;
+					item.oArrayPtr = new vmarrayvar<vmobject*>;
 				}
 				else
 				if ( type == USERPTRARRAY )
 				{
-					item.uArrayPtr = new arrayvar<void*>;
+					item.uArrayPtr = new vmarrayvar<void*>;
 				}
 				else
 				if ( type == STRINGARRAY )
 				{
-					item.strArrayPtr = new arrayvar<string*>;
+					item.strArrayPtr = new vmarrayvar<vmstring*>;
 				}
 				else
 				{
@@ -548,32 +551,32 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				item.type = type;
 				if ( type == OBJECT )
 				{
-					item.o = new object;
+					item.o = new vmobject;
 				}
 				else
 				if ( type == INTEGERARRAY )
 				{
-					item.iArrayPtr = new arrayvar<int>;
+					item.iArrayPtr = new vmarrayvar<int>;
 				}
 				else
 				if ( type == FLOATINGPOINTARRAY )
 				{
-					item.fArrayPtr = new arrayvar<float>;
+					item.fArrayPtr = new vmarrayvar<float>;
 				}
 				else
 				if ( type == OBJECTARRAY )
 				{
-					item.oArrayPtr = new arrayvar<object*>;
+					item.oArrayPtr = new vmarrayvar<vmobject*>;
 				}
 				else
 				if ( type == USERPTRARRAY )
 				{
-					item.uArrayPtr = new arrayvar<void*>;
+					item.uArrayPtr = new vmarrayvar<void*>;
 				}
 				else
 				if ( type == STRINGARRAY )
 				{
-					item.strArrayPtr = new arrayvar<string*>;
+					item.strArrayPtr = new vmarrayvar<vmstring*>;
 				}
 				else
 				{
@@ -600,7 +603,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				item.type = type;
 				if ( type == OBJECT )
 				{
-					item.o = new object;
+					item.o = new vmobject;
 					if ( prototype )
 					{
 						item.o->prototype = prototype;
@@ -609,27 +612,27 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				else
 				if ( type == INTEGERARRAY )
 				{
-					item.iArrayPtr = new arrayvar<int>;
+					item.iArrayPtr = new vmarrayvar<int>;
 				}
 				else
 				if ( type == FLOATINGPOINTARRAY )
 				{
-					item.fArrayPtr = new arrayvar<float>;
+					item.fArrayPtr = new vmarrayvar<float>;
 				}
 				else
 				if ( type == OBJECTARRAY )
 				{
-					item.oArrayPtr = new arrayvar<object*>;
+					item.oArrayPtr = new vmarrayvar<vmobject*>;
 				}
 				else
 				if ( type == USERPTRARRAY )
 				{
-					item.uArrayPtr = new arrayvar<void*>;
+					item.uArrayPtr = new vmarrayvar<void*>;
 				}
 				else
 				if ( type == STRINGARRAY )
 				{
-					item.strArrayPtr = new arrayvar<string*>;
+					item.strArrayPtr = new vmarrayvar<vmstring*>;
 				}
 				else
 				{
@@ -885,7 +888,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				var &item = state.stack[state.envStack.top()+index];
 				if ( item.type == OBJECT && entries )
 				{
-					object *o = item.o;
+					vmobject *o = item.o;
 					o = CreateEntries( ops, pc, o, entries-1 );
 					int key = ops[pc++];
 					o->m_tbl[key] = v0;
@@ -926,7 +929,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				var &item = state.stack[state.envStack.top()+index];
 				if ( item.type == OBJECT && entries )
 				{
-					object *o = item.o;
+					vmobject *o = item.o;
 					PushEntry( ops, pc, o, entries-1, state );
 				}
 				else
@@ -951,7 +954,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				const var &item = state.stack[state.envStack.top()+index];
 				if ( item.type == OBJECT && entries )
 				{
-					object *o = item.o;
+					vmobject *o = item.o;
 					CEXCEPTION_ERROR_CONDITION( o->prototype != -1, "object should have prototype" );
 					const var &proto_item = state.globals[o->prototype];
 					CEXCEPTION_ERROR_CONDITION( proto_item.type == OBJECT, "prototype is not object" );
@@ -984,7 +987,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				var &item = state.globals[index];
 				if ( item.type == OBJECT && entries )
 				{
-					object *o = item.o;
+					vmobject *o = item.o;
 					o = CreateEntries( ops, pc, o, entries-1 );
 					int key = ops[pc++];
 					o->m_tbl[key] = v0;
@@ -1025,7 +1028,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				var &item = state.globals[index];
 				if ( item.type == OBJECT && entries )
 				{
-					object *o = item.o;
+					vmobject *o = item.o;
 					PushEntry( ops, pc, o, entries-1, state );
 				}
 				else
@@ -1222,15 +1225,66 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			{
 				int len = ops[pc++];
 				wchar_t *s = (wchar_t*)&ops[pc];
-				string *str = new string( s, len );
+				vmstring *str = new vmstring( s, len );
 				var &v0 = state.stack.push();
 				v0.type = STRING;
 				v0.str = str;
 				pc += (len+1)/2;
 			}
 			break;
+		case OPC_MAKESTRUCT:
+			{
+				int type = ops[pc++];
+				int index = ops[pc++];
+				var &item = state.stack[state.envStack.top()+index];
+				vmstructprops *props = state.structProps[type];
+				vmstruct *structmem = (vmstruct *)malloc( sizeof(vmstruct) + sizeof(var)*props->properties.size() );
+				item.type = STRUCT;
+				item.s = structmem;
+				item.s->m_type = type;
+				item.s->m_size = props->properties.size();
+				for ( int i=0; i<props->properties.size(); i++)
+				{
+					var &curitem = item.s->m_data[i];
+					curitem.type = (VARTYPE)props->properties[i].itemType;
+					if ( curitem.type == OBJECT )
+					{
+						curitem.o = new vmobject;
+					}
+					else
+					if ( curitem.type == INTEGERARRAY )
+					{
+						curitem.iArrayPtr = new vmarrayvar<int>;
+					}
+					else
+					if ( curitem.type == FLOATINGPOINTARRAY )
+					{
+						curitem.fArrayPtr = new vmarrayvar<float>;
+					}
+					else
+					if ( curitem.type == OBJECTARRAY )
+					{
+						curitem.oArrayPtr = new vmarrayvar<vmobject*>;
+					}
+					else
+					if ( curitem.type == USERPTRARRAY )
+					{
+						curitem.uArrayPtr = new vmarrayvar<void*>;
+					}
+					else
+					if ( curitem.type == STRINGARRAY )
+					{
+						curitem.strArrayPtr = new vmarrayvar<vmstring*>;
+					}
+					else
+					{
+						curitem.o = 0;
+					}
+				}
+			}
+			break;
 		default:
-			CEXCEPTION_ERROR( "err" );
+			CEXCEPTION_ERROR( "unimplemented OP" );
 			break;
 		}
 	}

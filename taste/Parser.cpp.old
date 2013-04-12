@@ -121,7 +121,7 @@ void Parser::Type(int &type) {
 			type = stringtype; 
 			break;
 		}
-		default: SynErr(45); break;
+		default: SynErr(46); break;
 		}
 }
 
@@ -141,7 +141,7 @@ void Parser::TypeNotObject(int &type) {
 		} else if (la->kind == 10 /* "string" */) {
 			Get();
 			type = stringtype; 
-		} else SynErr(46);
+		} else SynErr(47);
 }
 
 void Parser::ReturnType(int &type) {
@@ -150,7 +150,7 @@ void Parser::ReturnType(int &type) {
 			type = voidtype; 
 		} else if (StartOf(1)) {
 			Type(type);
-		} else SynErr(47);
+		} else SynErr(48);
 }
 
 void Parser::DataEntry(DataAst *parent) {
@@ -178,9 +178,9 @@ void Parser::DataEntry(DataAst *parent) {
 				Get();
 			} else if (la->kind == _floatingpoint) {
 				Get();
-			} else SynErr(48);
+			} else SynErr(49);
 			data->SetValue( t->val ); 
-		} else SynErr(49);
+		} else SynErr(50);
 }
 
 void Parser::DataDefinition(DataAst *parent) {
@@ -221,7 +221,7 @@ void Parser::VarDecl(VarDeclAst* &varDecl) {
 					DataAst *data = new DataAst(varDecl->GetNameWC(), NULL); 
 					DataDefinition(data);
 					varDecl->SetData( data ); 
-				} else SynErr(50);
+				} else SynErr(51);
 			}
 			Expect(21 /* ";" */);
 		} else if (StartOf(3)) {
@@ -240,7 +240,7 @@ void Parser::VarDecl(VarDeclAst* &varDecl) {
 				varDecl->SetExpr( expr ); 
 			}
 			Expect(21 /* ";" */);
-		} else SynErr(51);
+		} else SynErr(52);
 }
 
 void Parser::Expr(AstBase* &expr) {
@@ -261,7 +261,7 @@ void Parser::AddOp(int &op) {
 		} else if (la->kind == 23 /* "-" */) {
 			Get();
 			op = minus; 
-		} else SynErr(52);
+		} else SynErr(53);
 }
 
 void Parser::MulOp(int &op) {
@@ -271,7 +271,7 @@ void Parser::MulOp(int &op) {
 		} else if (la->kind == 25 /* "/" */) {
 			Get();
 			op = slash; 
-		} else SynErr(53);
+		} else SynErr(54);
 }
 
 void Parser::SimExpr(AstBase* &expr) {
@@ -295,7 +295,7 @@ void Parser::RelOp(int &op) {
 		} else if (la->kind == 34 /* ">" */) {
 			Get();
 			op = gtr; 
-		} else SynErr(54);
+		} else SynErr(55);
 }
 
 void Parser::ObjectMemberList(IdentVec &vec) {
@@ -379,7 +379,7 @@ void Parser::Factor(AstBase* &factor) {
 			Expect(28 /* ")" */);
 			break;
 		}
-		default: SynErr(55); break;
+		default: SynErr(56); break;
 		}
 }
 
@@ -412,7 +412,7 @@ void Parser::DeclarationList(DeclVec &vec) {
 }
 
 void Parser::ProcDecl(ProcDeclAst* &procDecl) {
-		VarDeclAst *varDecl; int type; AstBase *stat; DeclVec declVec; 
+		VarDeclAst *varDecl; int type; AstBase *stat; DeclVec declVec; EmbedDeclAst *structDecl; 
 		Expect(31 /* "function" */);
 		procDecl = new ProcDeclAst(); 
 		ReturnType(type);
@@ -430,12 +430,24 @@ void Parser::ProcDecl(ProcDeclAst* &procDecl) {
 			if (la->kind == 16 /* "var" */) {
 				VarDecl(varDecl);
 				procDecl->AddBody( varDecl ); 
+			} else if (la->kind == 42 /* "struct" */) {
+				StructDefDecl(structDecl);
+				procDecl->AddStructDecl( structDecl ); 
 			} else {
 				Stat(stat);
 				procDecl->AddBody( stat ); 
 			}
 		}
 		Expect(15 /* "}" */);
+}
+
+void Parser::StructDefDecl(EmbedDeclAst *&embed) {
+		Expect(42 /* "struct" */);
+		Expect(_ident);
+		embed = new EmbedDeclAst( t->val ); 
+		Expect(_ident);
+		embed->SetName( t->val ); 
+		Expect(21 /* ";" */);
 }
 
 void Parser::Stat(AstBase *&stat) {
@@ -447,8 +459,8 @@ void Parser::Stat(AstBase *&stat) {
 			Expect(28 /* ")" */);
 			IfAst *ifstat = new IfAst( expr ); stat = ifstat; 
 			Expect(13 /* "{" */);
-			while (StartOf(4)) {
-				if (StartOf(5)) {
+			while (StartOf(5)) {
+				if (StartOf(6)) {
 					Stat(substat);
 					ifstat->AddIf( substat ); 
 				} else {
@@ -460,8 +472,8 @@ void Parser::Stat(AstBase *&stat) {
 			if (la->kind == 36 /* "else" */) {
 				Get();
 				Expect(13 /* "{" */);
-				while (StartOf(4)) {
-					if (StartOf(5)) {
+				while (StartOf(5)) {
+					if (StartOf(6)) {
 						Stat(substat);
 						ifstat->AddElse( substat ); 
 					} else {
@@ -485,8 +497,8 @@ void Parser::Stat(AstBase *&stat) {
 			Expect(28 /* ")" */);
 			WhileAst *whilestat = new WhileAst( expr ); stat = whilestat; 
 			Expect(13 /* "{" */);
-			while (StartOf(4)) {
-				if (StartOf(5)) {
+			while (StartOf(5)) {
+				if (StartOf(6)) {
 					Stat(substat);
 					whilestat->AddExpr( substat ); 
 				} else {
@@ -498,8 +510,8 @@ void Parser::Stat(AstBase *&stat) {
 		} else if (la->kind == 13 /* "{" */) {
 			Get();
 			BlockAst *blockstat = new BlockAst; stat = blockstat; 
-			while (StartOf(4)) {
-				if (StartOf(5)) {
+			while (StartOf(5)) {
+				if (StartOf(6)) {
 					Stat(substat);
 					blockstat->AddExpr( substat ); 
 				} else {
@@ -539,7 +551,7 @@ void Parser::Stat(AstBase *&stat) {
 				}
 			}
 			Expect(21 /* ";" */);
-		} else SynErr(56);
+		} else SynErr(57);
 }
 
 void Parser::Term(AstBase* &term) {
@@ -571,16 +583,38 @@ void Parser::Def(DefDecl *&def) {
 			def->SetExtends( t->val ); 
 		}
 		Expect(13 /* "{" */);
-		while (la->kind == 16 /* "var" */ || la->kind == 31 /* "function" */ || la->kind == 39 /* "embed" */) {
+		while (StartOf(7)) {
 			if (la->kind == 16 /* "var" */) {
 				VarDecl(varDecl);
 				def->AddVarDecl( varDecl ); 
 			} else if (la->kind == 39 /* "embed" */) {
 				EmbedDecl(embedDecl);
 				def->AddEmbedDecl( embedDecl ); 
+			} else if (la->kind == 42 /* "struct" */) {
+				StructDefDecl(embedDecl);
+				def->AddStructDecl( embedDecl ); 
 			} else {
 				ProcDecl(procDecl);
 				def->AddProcDecl( procDecl ); 
+			}
+		}
+		Expect(15 /* "}" */);
+		Expect(21 /* ";" */);
+}
+
+void Parser::Struct(DefDecl *&def) {
+		VarDeclAst *varDecl; ProcDeclAst *procDecl; EmbedDeclAst *embedDecl; 
+		Expect(42 /* "struct" */);
+		Expect(_ident);
+		def = new DefDecl( t->val ); 
+		Expect(13 /* "{" */);
+		while (la->kind == 16 /* "var" */ || la->kind == 42 /* "struct" */) {
+			if (la->kind == 16 /* "var" */) {
+				VarDecl(varDecl);
+				def->AddVarDecl( varDecl ); 
+			} else {
+				StructDefDecl(embedDecl);
+				def->AddStructDecl( embedDecl ); 
 			}
 		}
 		Expect(15 /* "}" */);
@@ -606,7 +640,7 @@ void Parser::ProcDefDecl(ProcDefDeclAst* &procDecl) {
 
 void Parser::Interface(InterfaceDecl *&def) {
 		ProcDefDeclAst *procDecl; 
-		Expect(42 /* "interface" */);
+		Expect(43 /* "interface" */);
 		Expect(_ident);
 		def = new InterfaceDecl( t->val ); 
 		Expect(13 /* "{" */);
@@ -620,17 +654,20 @@ void Parser::Interface(InterfaceDecl *&def) {
 
 void Parser::Taste() {
 		DefDecl *defDecl; VarDeclAst *varDecl; ProcDeclAst *procDecl; InterfaceDecl *ifaceDecl; 
-		Expect(43 /* "package" */);
+		Expect(44 /* "package" */);
 		Expect(_ident);
 		package = new Package( t->val ); 
 		Expect(13 /* "{" */);
-		while (StartOf(6)) {
+		while (StartOf(8)) {
 			if (la->kind == 40 /* "def" */) {
 				Def(defDecl);
 				package->AddDefDecl( defDecl ); 
-			} else if (la->kind == 42 /* "interface" */) {
+			} else if (la->kind == 43 /* "interface" */) {
 				Interface(ifaceDecl);
 				package->AddInterfaceDecl( ifaceDecl ); 
+			} else if (la->kind == 42 /* "struct" */) {
+				Struct(defDecl);
+				package->AddStructDecl( defDecl ); 
 			} else if (la->kind == 16 /* "var" */) {
 				VarDecl(varDecl);
 				package->AddVarDecl( varDecl ); 
@@ -743,7 +780,7 @@ void Parser::Parse() {
 }
 
 Parser::Parser(Scanner *scanner) {
-	maxT = 44;
+	maxT = 45;
 
 	ParserInitCaller<Parser>::CallInit(this);
 	dummyToken = NULL;
@@ -758,14 +795,16 @@ bool Parser::StartOf(int s) {
 	const bool T = true;
 	const bool x = false;
 
-	static bool set[7][46] = {
-		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
-		{x,x,x,x, x,T,T,T, T,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
-		{x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,T, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
-		{x,x,x,x, x,T,T,T, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x},
-		{x,T,x,x, x,x,x,x, x,x,x,x, x,T,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,T,T,x, x,x,x,x, x,x},
-		{x,T,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,T,T,x, x,x,x,x, x,x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, T,x,T,x, x,x}
+	static bool set[9][47] = {
+		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
+		{x,x,x,x, x,T,T,T, T,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
+		{x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,T, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
+		{x,x,x,x, x,T,T,T, x,T,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x},
+		{x,T,x,x, x,x,x,x, x,x,x,x, x,T,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,T,T,x, x,x,T,x, x,x,x},
+		{x,T,x,x, x,x,x,x, x,x,x,x, x,T,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,T,T,x, x,x,x,x, x,x,x},
+		{x,T,x,x, x,x,x,x, x,x,x,x, x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,T,T,x, x,x,x,x, x,x,x},
+		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,T, x,x,T,x, x,x,x},
+		{x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, T,x,T,T, x,x,x}
 	};
 
 
@@ -828,21 +867,22 @@ void Errors::SynErr(int line, int col, int n) {
 			case 39: s = coco_string_create(L"\"embed\" expected"); break;
 			case 40: s = coco_string_create(L"\"def\" expected"); break;
 			case 41: s = coco_string_create(L"\"extends\" expected"); break;
-			case 42: s = coco_string_create(L"\"interface\" expected"); break;
-			case 43: s = coco_string_create(L"\"package\" expected"); break;
-			case 44: s = coco_string_create(L"??? expected"); break;
-			case 45: s = coco_string_create(L"invalid Type"); break;
-			case 46: s = coco_string_create(L"invalid TypeNotObject"); break;
-			case 47: s = coco_string_create(L"invalid ReturnType"); break;
-			case 48: s = coco_string_create(L"invalid DataEntry"); break;
+			case 42: s = coco_string_create(L"\"struct\" expected"); break;
+			case 43: s = coco_string_create(L"\"interface\" expected"); break;
+			case 44: s = coco_string_create(L"\"package\" expected"); break;
+			case 45: s = coco_string_create(L"??? expected"); break;
+			case 46: s = coco_string_create(L"invalid Type"); break;
+			case 47: s = coco_string_create(L"invalid TypeNotObject"); break;
+			case 48: s = coco_string_create(L"invalid ReturnType"); break;
 			case 49: s = coco_string_create(L"invalid DataEntry"); break;
-			case 50: s = coco_string_create(L"invalid VarDecl"); break;
+			case 50: s = coco_string_create(L"invalid DataEntry"); break;
 			case 51: s = coco_string_create(L"invalid VarDecl"); break;
-			case 52: s = coco_string_create(L"invalid AddOp"); break;
-			case 53: s = coco_string_create(L"invalid MulOp"); break;
-			case 54: s = coco_string_create(L"invalid RelOp"); break;
-			case 55: s = coco_string_create(L"invalid Factor"); break;
-			case 56: s = coco_string_create(L"invalid Stat"); break;
+			case 52: s = coco_string_create(L"invalid VarDecl"); break;
+			case 53: s = coco_string_create(L"invalid AddOp"); break;
+			case 54: s = coco_string_create(L"invalid MulOp"); break;
+			case 55: s = coco_string_create(L"invalid RelOp"); break;
+			case 56: s = coco_string_create(L"invalid Factor"); break;
+			case 57: s = coco_string_create(L"invalid Stat"); break;
 
 		default:
 		{
