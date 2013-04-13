@@ -4,6 +4,7 @@ package Test {
 	var float[] items1;
 	var object[] items2;
 	var t1 items3;
+	//var t1[] items4;
 
 	interface CanCreate
 	{
@@ -83,40 +84,46 @@ package Test {
 	
 	function void Main()
 	{
+		items3.a = 1;
+		items3.b = items3.a;
+		// not quite write yet items4[0].a = 1;
 		var t2 p;
 		p.c = 1.0;
-		// doesn't work until all global vars are listed in package 
-		// items3.a = 1;
 		p.t.a = 2;
-		var string str = "blah";
+
+		var string str;
+		str = "blah";
+
 		var string[] strarray;
 		strarray.pushback( str );
+
 		var object t = new bah;
 		var object o;
-		var int c = t.implements(CanCreate);
+		var int c;
+		c = t.implements(CanCreate);
 		items2.pushback( t );
-		var int c2 = items2.size();
+		var int c2;
+		c2 = items2.size();
 		o.pos.x = 0.0;
 		o.pos.y = 0.0;
 		o.dir.x = 0.0;
 		o.dir.y = 1.0;
 		t.onCreate( o );
-		var float f = testret();
+		var float f;
+		f = testret();
 		f = cfunc( 10 );
-		var object d = { int a : 20,
-						 object c : { 
-							float a : 21 
-						 }
-					   };
-
-		var int i = 200;
+		var int i;
+		i = 200;
 		while ( i > 0 )
 		{
-			var int numitems = items2.size();
-			var int j=0;
+			var int numitems;
+			numitems = items2.size();
+			var int j;
+			j=0;
 			while ( j < numitems )
 			{
-				var object curj = items2[j];
+				var object curj;
+				curj = items2[j];
 				if ( curj.implements( CanUpdate ) )
 				{
 					curj.onUpdate( 0.1 );

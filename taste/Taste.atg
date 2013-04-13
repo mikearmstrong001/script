@@ -83,33 +83,8 @@ ReturnType<int &type>
 
 /*------------------------------------------------------------------------*/
 
-DataEntry<DataAst *parent>		(. DataAst *data = new DataAst(parent); if ( parent ) parent->AddKid(data); .)
-=
-	( "object" ident ':' DataDefinition<data> )
-	|
-	( 
-		"int"							(. data->SetType( integer ); .)
-		ident							(. data->SetName( t->val ); .)
-		':' 
-		number 							(. data->SetValue( t->val ); .)
-	)
-	|
-	( 
-		"float"							(. data->SetType( floatingpoint ); .)
-		ident							(. data->SetName( t->val ); .)
-		':' 
-		( number | floatingpoint )		(. data->SetValue( t->val ); .)
-	)
-	.
 
-DataDefinition<DataAst *parent>
-=	"{"
-		[ DataEntry<parent> { ',' DataEntry<parent> } ]
-	"}"
-	.
-
-
-VarDecl<VarDeclAst* &varDecl>	(. int type; varDecl = new VarDeclAst; AstBase *expr; .)
+VarDecl<VarDeclAst* &varDecl>	(. int type; varDecl = new VarDeclAst; .)
 = 
 	"var"
 	(
@@ -127,14 +102,6 @@ VarDecl<VarDeclAst* &varDecl>	(. int type; varDecl = new VarDeclAst; AstBase *ex
 						"new" 
 						ident				(. varDecl->SetPrototype(t->val); .) 
 					)
-					| 
-					( 
-						Expr<expr>		(. varDecl->SetExpr( expr ); .)
-					)
-					|	
-					(					(. DataAst *data = new DataAst(varDecl->GetNameWC(), NULL); .)
-						DataDefinition<data> (. varDecl->SetData( data ); .)
-					)
 				)
 			]
 			';' 
@@ -147,10 +114,8 @@ VarDecl<VarDeclAst* &varDecl>	(. int type; varDecl = new VarDeclAst; AstBase *ex
 					'[' ']'					(. varDecl->SetIsArray(); .)
 				]
 			)
-			ident							(. varDecl->SetName(t->val); .)
-			[ '='
-				Expr<expr>					(. varDecl->SetExpr( expr ); .)
-			] ';'
+			ident							(. varDecl->SetName(t->val); .) 
+			';'
 		)
 	)
 	.
@@ -387,18 +352,17 @@ Stat<AstBase *&stat>			(. VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *su
 	(
 		ident							(. IdentAst *identStat = new IdentAst( t->val ); stat = identStat; IdentVec identVec; AstBase *expr; .)
 		(
-			[ 
-				( 
+			 
+				[
 					'['
 					Expr<expr>					(. identStat->SetArrayIndex( expr ); .)
-					']'
-				)
-				| 
-				(
+					']'				
+				]
+				[
 					'.' 
 					ObjectMemberList<identVec> (. identStat->SetMemberList( identVec ); .)
-				)
-			]
+				]
+			
 			[
 				( 
 					'='

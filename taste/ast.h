@@ -152,39 +152,6 @@ public:
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg ) = 0;
 };
 
-class DataAst : public AstBase
-{
-	std::wstring m_varname;
-	DataAst *m_parent;
-	std::wstring m_subname;
-	int m_type;
-	union
-	{
-		int intval;
-		float fval;
-	};
-	std::vector<DataAst*> m_kids;
-public:
-	DataAst( DataAst *parent ) : m_parent(parent), m_type(-1) {}
-	DataAst( const wchar_t *varname, DataAst *parent ) : m_varname(varname), m_parent(parent), m_type(-1) {}
-	void SetName( wchar_t *name ) { m_subname = name; }
-	void SetType( int type ) { m_type = type; }
-	void AddKid( DataAst *c ) { m_kids.push_back( c ); }
-	void SetValue( wchar_t *v )
-	{
-		if ( m_type == 2 )
-		{
-			swscanf(v, L"%d", &intval);
-		}
-		else
-		if ( m_type == 3 )
-		{
-			swscanf(v, L"%f", &fval);
-		}
-	}
-	void GenerateNameList( std::wstring &varName, std::vector<int> &names );
-	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
-};
 
 class BinaryAst : public AstBase
 {
@@ -285,21 +252,18 @@ class VarDeclAst : public AstBase
 	bool m_isarray;
 	std::wstring m_name;
 	std::wstring m_prototype;
-	AstBase *m_expr;
-	DataAst *m_data;
 public:
-	VarDeclAst() : m_type(0), m_isarray(false), m_expr(0), m_data(0) {}
+	VarDeclAst() : m_type(0), m_isarray(false) {}
 
 	void SetType( int type ) { m_type = type; }
 	void SetPrototype( const wchar_t *name ) { m_prototype = name; }
 	void SetName( const wchar_t *name ) { m_name = name; }
-	void SetExpr( AstBase *expr ) { m_expr = expr; }
-	void SetData( DataAst *data ) { m_data = data; }
 	void SetIsArray() { m_isarray = true; }
 
 	wchar_t const *GetNameWC() const { return m_name.c_str(); }
 	std::wstring const &GetName() const { return m_name; }
 	int	GetType() const { return m_type; }
+	bool IsUserType() const { return (unsigned int)m_type >= MAX_VARTYPE; }
 
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 	virtual void GenerateConstructor( std::vector<int> &oplist, StackFrame &frame );
@@ -502,12 +466,17 @@ public:
 
 	DefDecl *FindStruct( const wchar_t *name );
 	DefDecl *FindStruct( int name );
+	VarDeclAst *FindVar( const wchar_t *name );
+	VarDeclAst *FindVar( int name );
+	ProcDeclAst *FindProc( const wchar_t *name );
+	ProcDeclAst *FindProc( int name );
 
 	void AddDefDecl( DefDecl *v ) { m_defs.push_back(v); }
 	void AddStructDecl( DefDecl *v ) { m_structs.push_back(v); }
 	void AddInterfaceDecl( InterfaceDecl *v ) { m_interfaces.push_back(v); }
 	void AddVarDecl( VarDeclAst *v ) { m_varDecls.push_back(v); }
 	void AddProcDecl( ProcDeclAst *p ) { m_procs.push_back(p); }
+
 
 	void Generate();
 };

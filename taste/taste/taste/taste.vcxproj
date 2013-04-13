@@ -78,7 +78,6 @@
     <ClInclude Include="..\..\cexception.h" />
     <ClInclude Include="..\..\Parser.h" />
     <ClInclude Include="..\..\Scanner.h" />
-    <ClInclude Include="..\..\SymbolTable.h" />
     <ClInclude Include="..\..\vm.h" />
   </ItemGroup>
   <ItemGroup>

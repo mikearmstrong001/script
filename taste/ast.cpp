@@ -94,57 +94,6 @@ inline int AddOp( std::vector<int> &oplist, int op, float v )
 	return pos;
 }
 
-void DataAst::GenerateNameList( std::wstring &varName, std::vector<int> &names )
-{
-	if ( m_parent )
-	{
-		m_parent->GenerateNameList( varName, names );
-		names.push_back( Hash( m_subname.c_str() ) );
-	}
-	else
-	{
-		varName = m_varname;
-		names.push_back( Hash( m_varname.c_str() ) );
-	}
-}
-
-void DataAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
-{
-	if ( m_type != -1 )
-	{
-		if ( m_type == 2 )
-		{
-			AddOp( oplist, OPC_PUSHI, intval );
-		}
-		else
-		if ( m_type == 3 )
-		{
-			AddOp( oplist, OPC_PUSHF, fval );
-		}
-		else
-		{
-			assert(0);
-		}
-		std::wstring rootName;
-		std::vector<int> nameList;
-		GenerateNameList( rootName, nameList );
-		StackEntry e;
-		int index = frame.FindEntry( e, rootName );
-		if ( index == 0x7fffffff )
-		{
-			AddOp(oplist,OPC_POPITEMG, nameList );
-		}
-		else
-		{
-			nameList[0] = index;
-			AddOp(oplist,OPC_POPITEM, nameList );
-		}
-	}
-	for (unsigned int i=0; i<m_kids.size(); i++)
-	{
-		m_kids[i]->Generate( oplist, frame, pkg );
-	}
-}
 
 void BinaryAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
@@ -158,42 +107,99 @@ void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pack
 {
 	StackEntry e;
 	int index = frame.FindEntry( e, m_name );
+	if ( index == 0x7fffffff )
+	{
+		VarDeclAst *var = pkg->FindVar( m_name.c_str() );
+		if ( var && var->IsUserType() )
+		{
+			e.type = STRUCT;
+			e.usertype = var->GetType();
+		}
+		else
+		if ( var == NULL )
+		{
+			e.type = INTEGER;
+		}
+	}
+
 	if ( m_index != 0 )
 	{
 		m_index->Generate( oplist, frame, pkg );
-		if ( index == 0x7fffffff )
+		if ( e.type == STRUCT )
 		{
-			AddOp( oplist, OPC_PUSHITEMGARRAY, Hash( m_name.c_str() ) );
+			std::wstring lookupName = m_identVec[0];
+			for (unsigned int i=1; i<m_identVec.size(); i++)
+			{
+				lookupName += L"." + m_identVec[1];
+			}
+			DefDecl *sd = pkg->FindStruct( e.usertype );
+			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
+			if ( index == 0x7fffffff )
+			{
+				AddOp(oplist,OPC_PUSHITEMGARRAY, Hash(m_name.c_str()), eleIndex );
+			}
+			else
+			{
+				AddOp(oplist,OPC_PUSHITEMARRAY, index, eleIndex );
+			}
 		}
 		else
 		{
-			AddOp( oplist, OPC_PUSHITEMARRAY, index );
+			if ( index == 0x7fffffff )
+			{
+				AddOp( oplist, OPC_PUSHITEMGARRAY, Hash( m_name.c_str() ) );
+			}
+			else
+			{
+				AddOp( oplist, OPC_PUSHITEMARRAY, index );
+			}
 		}
 	}
 	else
 	{
-		std::vector<int> lookup;
-		lookup.push_back( 0 );
-		for (unsigned int i=0; i<m_identVec.size(); i++)
+		if ( e.type == STRUCT )
 		{
-			lookup.push_back( Hash( m_identVec[i].c_str() ) );
-		}
-		if ( m_name == L"super" )
-		{
-			int index = frame.FindEntry( e, L"self" );
-			lookup[0] = index;
-			AddOp( oplist, OPC_PUSHSUPER, lookup );
+			std::wstring lookupName = m_identVec[0];
+			for (unsigned int i=1; i<m_identVec.size(); i++)
+			{
+				lookupName += L"." + m_identVec[1];
+			}
+			DefDecl *sd = pkg->FindStruct( e.usertype );
+			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
+			if ( index == 0x7fffffff )
+			{
+				AddOp(oplist,OPC_PUSHITEMG, 2, Hash(m_name.c_str()), eleIndex );
+			}
+			else
+			{
+				AddOp(oplist,OPC_PUSHITEM, 2, index, eleIndex );
+			}
 		}
 		else
-		if ( index == 0x7fffffff )
 		{
-			lookup[0] = Hash( m_name.c_str() );
-			AddOp( oplist, OPC_PUSHITEMG, lookup );
-		}
-		else
-		{
-			lookup[0] = index;
-			AddOp( oplist, OPC_PUSHITEM, lookup );
+			std::vector<int> lookup;
+			lookup.push_back( 0 );
+			for (unsigned int i=0; i<m_identVec.size(); i++)
+			{
+				lookup.push_back( Hash( m_identVec[i].c_str() ) );
+			}
+			if ( m_name == L"super" )
+			{
+				int index = frame.FindEntry( e, L"self" );
+				lookup[0] = index;
+				AddOp( oplist, OPC_PUSHSUPER, lookup );
+			}
+			else
+			if ( index == 0x7fffffff )
+			{
+				lookup[0] = Hash( m_name.c_str() );
+				AddOp( oplist, OPC_PUSHITEMG, lookup );
+			}
+			else
+			{
+				lookup[0] = index;
+				AddOp( oplist, OPC_PUSHITEM, lookup );
+			}
 		}
 	}
 }
@@ -257,26 +263,7 @@ void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pa
 			{
 				AddOp( oplist, OPC_PUSHITEM, 1, index );
 				AddOp( oplist, OPC_CALLG, Hash( (m_prototype + L":~creator").c_str() ) );
-				//AddOp( oplist, OPC_POP, 1 );
 			}
-		}
-		if ( m_expr )
-		{
-			m_expr->Generate(oplist,frame, pkg);
-			StackEntry e;
-			int index = frame.FindEntry( e, m_name );
-			if ( index == 0x7fffffff )
-			{
-				AddOp( oplist, OPC_POPITEMG, 1, Hash( m_name.c_str() ) );
-			}
-			else
-			{
-				AddOp( oplist, OPC_POPITEM, 1, index );
-			}
-		}
-		if ( m_data )
-		{
-			m_data->Generate(oplist,frame,pkg);
 		}
 	}
 }
@@ -320,17 +307,48 @@ void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class P
 void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	m_expr->Generate(oplist,frame,pkg);
+
 	StackEntry e;
 	int index = frame.FindEntry( e, m_name );
+	if ( index == 0x7fffffff )
+	{
+		VarDeclAst *var = pkg->FindVar( m_name.c_str() );
+		if ( var->IsUserType() )
+		{
+			e.type = STRUCT;
+			e.usertype = var->GetType();
+		}
+	}
+
 	if ( m_arrayIndex != 0 )
 	{
 		m_arrayIndex->Generate( oplist, frame, pkg );
+		if ( e.type == STRUCT )
+		{
+			std::wstring lookupName = m_identVec[0];
+			for (unsigned int i=1; i<m_identVec.size(); i++)
+			{
+				lookupName += L"." + m_identVec[1];
+			}
+			DefDecl *sd = pkg->FindStruct( e.usertype );
+			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
+			if ( index == 0x7fffffff )
+			{
+				AddOp(oplist,OPC_POPITEMGARRAY, Hash(m_name.c_str()), eleIndex );
+			}
+			else
+			{
+				AddOp(oplist,OPC_POPITEMARRAY, index, eleIndex );
+			}
+		}
+		else
 		if ( index == 0x7fffffff )
 		{
 			AddOp(oplist,OPC_POPITEMGARRAY, Hash( m_name.c_str() ) );
 		}
 		else
 		{
+			// check if struct
 			AddOp(oplist,OPC_POPITEMARRAY, index );
 		}
 	}
@@ -347,13 +365,12 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pac
 			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
 			if ( index == 0x7fffffff )
 			{
-				AddOp(oplist,OPC_POPITEMG, 2, index, eleIndex );
+				AddOp(oplist,OPC_POPITEMG, 2, Hash(m_name.c_str()), eleIndex );
 			}
 			else
 			{
 				AddOp(oplist,OPC_POPITEM, 2, index, eleIndex );
 			}
-			//vmstructprops *structprops = state
 		}
 		else
 		{
@@ -686,6 +703,47 @@ DefDecl *Package::FindStruct( int name )
 	}
 	return NULL;
 }
+
+VarDeclAst *Package::FindVar( const wchar_t *name )
+{
+	for (unsigned int i=0; i<m_varDecls.size(); i++)
+	{
+		if ( m_varDecls[i]->GetName() == name )
+			return m_varDecls[i];
+	}
+	return NULL;
+}
+
+VarDeclAst *Package::FindVar( int name )
+{
+	for (unsigned int i=0; i<m_varDecls.size(); i++)
+	{
+		if ( Hash(m_varDecls[i]->GetName().c_str()) == name )
+			return m_varDecls[i];
+	}
+	return NULL;
+}
+
+ProcDeclAst *Package::FindProc( const wchar_t *name )
+{
+	for (unsigned int i=0; i<m_procs.size(); i++)
+	{
+		if ( m_procs[i]->GetName() == name )
+			return m_procs[i];
+	}
+	return NULL;
+}
+
+ProcDeclAst *Package::FindProc( int name )
+{
+	for (unsigned int i=0; i<m_procs.size(); i++)
+	{
+		if ( Hash(m_procs[i]->GetName().c_str()) == name )
+			return m_procs[i];
+	}
+	return NULL;
+}
+
 
 void Package::Generate()
 {

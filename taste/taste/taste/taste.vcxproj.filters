@@ -21,9 +21,6 @@
     <ClInclude Include="..\..\Scanner.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\SymbolTable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\ast.h">
       <Filter>Header Files</Filter>
     </ClInclude>

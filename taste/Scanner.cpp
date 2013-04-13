@@ -449,30 +449,29 @@ Scanner::~Scanner() {
 void Scanner::Init() {
 	EOL    = '\n';
 	eofSym = 0;
-	maxT = 45;
-	noSym = 45;
+	maxT = 44;
+	noSym = 44;
 	int i;
 	for (i = 65; i <= 90; ++i) start.set(i, 6);
 	for (i = 97; i <= 122; ++i) start.set(i, 6);
 	for (i = 48; i <= 57; ++i) start.set(i, 7);
 	start.set(34, 4);
-	start.set(58, 8);
-	start.set(123, 9);
-	start.set(44, 10);
-	start.set(125, 11);
-	start.set(91, 12);
-	start.set(93, 13);
-	start.set(61, 25);
-	start.set(59, 14);
-	start.set(43, 15);
-	start.set(45, 16);
-	start.set(42, 17);
-	start.set(47, 18);
-	start.set(46, 19);
-	start.set(40, 20);
-	start.set(41, 21);
-	start.set(60, 23);
-	start.set(62, 24);
+	start.set(91, 8);
+	start.set(93, 9);
+	start.set(61, 24);
+	start.set(59, 10);
+	start.set(43, 11);
+	start.set(45, 12);
+	start.set(42, 13);
+	start.set(47, 14);
+	start.set(46, 15);
+	start.set(40, 16);
+	start.set(41, 17);
+	start.set(44, 18);
+	start.set(123, 19);
+	start.set(125, 20);
+	start.set(60, 22);
+	start.set(62, 23);
 		start.set(Buffer::EoF, -1);
 	keywords.set(L"int", 5);
 	keywords.set(L"bool", 6);
@@ -481,21 +480,21 @@ void Scanner::Init() {
 	keywords.set(L"userptr", 9);
 	keywords.set(L"string", 10);
 	keywords.set(L"void", 11);
-	keywords.set(L"var", 16);
-	keywords.set(L"new", 20);
-	keywords.set(L"true", 29);
-	keywords.set(L"false", 30);
-	keywords.set(L"function", 31);
-	keywords.set(L"if", 35);
-	keywords.set(L"else", 36);
-	keywords.set(L"return", 37);
-	keywords.set(L"while", 38);
-	keywords.set(L"embed", 39);
-	keywords.set(L"def", 40);
-	keywords.set(L"extends", 41);
-	keywords.set(L"struct", 42);
-	keywords.set(L"interface", 43);
-	keywords.set(L"package", 44);
+	keywords.set(L"var", 12);
+	keywords.set(L"new", 16);
+	keywords.set(L"true", 25);
+	keywords.set(L"false", 26);
+	keywords.set(L"function", 28);
+	keywords.set(L"if", 34);
+	keywords.set(L"else", 35);
+	keywords.set(L"return", 36);
+	keywords.set(L"while", 37);
+	keywords.set(L"embed", 38);
+	keywords.set(L"def", 39);
+	keywords.set(L"extends", 40);
+	keywords.set(L"struct", 41);
+	keywords.set(L"interface", 42);
+	keywords.set(L"package", 43);
 
 
 	tvalLength = 128;
@@ -715,17 +714,17 @@ Token* Scanner::NextToken() {
 			else if (ch == L'.') {AddCh(); goto case_3;}
 			else {t->kind = 2; break;}
 		case 8:
-			{t->kind = 12; break;}
-		case 9:
 			{t->kind = 13; break;}
-		case 10:
+		case 9:
 			{t->kind = 14; break;}
-		case 11:
-			{t->kind = 15; break;}
-		case 12:
+		case 10:
 			{t->kind = 17; break;}
-		case 13:
+		case 11:
 			{t->kind = 18; break;}
+		case 12:
+			{t->kind = 19; break;}
+		case 13:
+			{t->kind = 20; break;}
 		case 14:
 			{t->kind = 21; break;}
 		case 15:
@@ -735,24 +734,22 @@ Token* Scanner::NextToken() {
 		case 17:
 			{t->kind = 24; break;}
 		case 18:
-			{t->kind = 25; break;}
-		case 19:
-			{t->kind = 26; break;}
-		case 20:
 			{t->kind = 27; break;}
+		case 19:
+			{t->kind = 29; break;}
+		case 20:
+			{t->kind = 30; break;}
 		case 21:
-			{t->kind = 28; break;}
+			case_21:
+			{t->kind = 31; break;}
 		case 22:
-			case_22:
 			{t->kind = 32; break;}
 		case 23:
 			{t->kind = 33; break;}
 		case 24:
-			{t->kind = 34; break;}
-		case 25:
-			recEnd = pos; recKind = 19;
-			if (ch == L'=') {AddCh(); goto case_22;}
-			else {t->kind = 19; break;}
+			recEnd = pos; recKind = 15;
+			if (ch == L'=') {AddCh(); goto case_21;}
+			else {t->kind = 15; break;}
 
 	}
 	AppendVal(t);

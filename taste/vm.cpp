@@ -934,6 +934,13 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
 				var &item = state.stack[state.envStack.top()+index];
+				if ( item.type == STRUCT )
+				{
+					CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
+					int eleIndex = ops[pc++];
+					state.stack.push( item.s->m_data[eleIndex] );
+				}
+				else
 				if ( item.type == OBJECT && entries )
 				{
 					vmobject *o = item.o;
@@ -1040,6 +1047,13 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
 				var &item = state.globals[index];
+				if ( item.type == STRUCT )
+				{
+					CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
+					int eleIndex = ops[pc++];
+					state.stack.push( item.s->m_data[eleIndex] );
+				}
+				else
 				if ( item.type == OBJECT && entries )
 				{
 					vmobject *o = item.o;
@@ -1076,6 +1090,12 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int lookup = ops[pc++];
 				int index = ToInt( v1 );
 				var &v = state.globals[lookup];
+				if ( v.type == STRUCT )
+				{
+					int item = ops[pc++];
+					v.iArrayPtr->m_items[index*v.s->m_size+item] = ToInt( v0 );
+				}
+				else
 				if ( v.type == INTEGERARRAY )
 				{
 					v.iArrayPtr->m_items[index] = ToInt( v0 );

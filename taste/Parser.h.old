@@ -115,12 +115,10 @@ int // operators
 	void Type(int &type);
 	void TypeNotObject(int &type);
 	void ReturnType(int &type);
-	void DataEntry(DataAst *parent);
-	void DataDefinition(DataAst *parent);
 	void VarDecl(VarDeclAst* &varDecl);
-	void Expr(AstBase* &expr);
 	void AddOp(int &op);
 	void MulOp(int &op);
+	void Expr(AstBase* &expr);
 	void SimExpr(AstBase* &expr);
 	void RelOp(int &op);
 	void ObjectMemberList(IdentVec &vec);
