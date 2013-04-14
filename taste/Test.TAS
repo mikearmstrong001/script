@@ -46,10 +46,12 @@ package Test {
 		var int b;
 		var float c;
 		var userptr renderHandle;
+		var t1 d;
 
 		function void onCreate( object createParams )
 		{
 			//super.onCreate( self, createParams );
+			self.d.a = 1;
 			self.pos.x = createParams.pos.x;
 			self.pos.y = createParams.pos.y;
 			self.dir.x = createParams.dir.x;

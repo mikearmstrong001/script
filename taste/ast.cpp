@@ -43,6 +43,7 @@ inline int AddOp( std::vector<int> &oplist, int op, int v0, int v1 )
 {
 	int pos = oplist.size();
 
+	assert( op>=0 && op < OPC_MAX );
 	printf( "%04d: %s %d %d\n", pos, opnames[op], v0, v1 );
 
 	oplist.push_back( op );
