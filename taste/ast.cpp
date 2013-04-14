@@ -127,13 +127,13 @@ void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pack
 		m_index->Generate( oplist, frame, pkg );
 		if ( e.type == STRUCT )
 		{
-			std::wstring lookupName = m_identVec[0];
+			int lookupName = Hash( m_identVec[0].c_str() );
 			for (unsigned int i=1; i<m_identVec.size(); i++)
 			{
-				lookupName += L"." + m_identVec[1];
+				lookupName = lookupName ^ Hash( m_identVec[i].c_str() );
 			}
 			DefDecl *sd = pkg->FindStruct( e.usertype );
-			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
+			int eleIndex = sd->FindElementIndex( lookupName );
 			if ( index == 0x7fffffff )
 			{
 				AddOp(oplist,OPC_PUSHITEMGARRAY, Hash(m_name.c_str()), eleIndex );
@@ -159,13 +159,13 @@ void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pack
 	{
 		if ( e.type == STRUCT )
 		{
-			std::wstring lookupName = m_identVec[0];
+			int lookupName = Hash( m_identVec[0].c_str() );
 			for (unsigned int i=1; i<m_identVec.size(); i++)
 			{
-				lookupName += L"." + m_identVec[1];
+				lookupName = lookupName ^ Hash( m_identVec[i].c_str() );
 			}
 			DefDecl *sd = pkg->FindStruct( e.usertype );
-			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
+			int eleIndex = sd->FindElementIndex( lookupName );
 			if ( index == 0x7fffffff )
 			{
 				AddOp(oplist,OPC_PUSHITEMG, 2, Hash(m_name.c_str()), eleIndex );
@@ -325,13 +325,13 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pac
 		m_arrayIndex->Generate( oplist, frame, pkg );
 		if ( e.type == STRUCT )
 		{
-			std::wstring lookupName = m_identVec[0];
+			int lookupName = Hash( m_identVec[0].c_str() );
 			for (unsigned int i=1; i<m_identVec.size(); i++)
 			{
-				lookupName += L"." + m_identVec[1];
+				lookupName = lookupName ^ Hash(m_identVec[i].c_str());
 			}
 			DefDecl *sd = pkg->FindStruct( e.usertype );
-			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
+			int eleIndex = sd->FindElementIndex( lookupName );
 			if ( index == 0x7fffffff )
 			{
 				AddOp(oplist,OPC_POPITEMGARRAY, Hash(m_name.c_str()), eleIndex );
@@ -356,13 +356,13 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pac
 	{
 		if ( e.type == STRUCT )
 		{
-			std::wstring lookupName = m_identVec[0];
+			int lookupName = Hash( m_identVec[0].c_str() );
 			for (unsigned int i=1; i<m_identVec.size(); i++)
 			{
-				lookupName += L"." + m_identVec[1];
+				lookupName = lookupName ^ Hash(m_identVec[i].c_str());
 			}
 			DefDecl *sd = pkg->FindStruct( e.usertype );
-			int eleIndex = sd->FindElementIndex( lookupName.c_str() );
+			int eleIndex = sd->FindElementIndex( lookupName );
 			if ( index == 0x7fffffff )
 			{
 				AddOp(oplist,OPC_POPITEMG, 2, Hash(m_name.c_str()), eleIndex );
@@ -565,11 +565,11 @@ void EmbedDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class 
 	}
 }
 
-int DefDecl::FindElementIndex( const wchar_t *name )
+int DefDecl::FindElementIndex( int hashName )
 {
 	for ( unsigned int i=0; i<m_flattenedProps.size(); i++ )
 	{
-		if ( m_flattenedProps[i].name == name )
+		if ( m_flattenedProps[i].hashName == hashName )
 			return i;
 	}
 	return -1;
@@ -654,7 +654,7 @@ void DefDecl::GenerateProps( class Package *pkg, vmstate &state )
 			for (unsigned int j=0; j<childProps.size(); j++)
 			{
 				Element e;
-				e.name = m_varDecls[i]->GetName() + std::wstring(L".") + childProps[j].name;
+				e.hashName = Hash( m_varDecls[i]->GetName().c_str() ) ^ childProps[j].hashName;
 				e.varInfo = childProps[j].varInfo;
 				m_flattenedProps.push_back( e );
 			}
@@ -662,7 +662,7 @@ void DefDecl::GenerateProps( class Package *pkg, vmstate &state )
 		else
 		{
 			Element e;
-			e.name = m_varDecls[i]->GetNameWC();
+			e.hashName = Hash( m_varDecls[i]->GetNameWC() );
 			e.varInfo = m_varDecls[i];
 			m_flattenedProps.push_back( e );
 		}
@@ -674,7 +674,7 @@ void DefDecl::GenerateProps( class Package *pkg, vmstate &state )
 	for (unsigned int i=0; i<m_flattenedProps.size(); i++)
 	{
 		vmelement vme;
-		vme.itemName = Hash( m_flattenedProps[i].name.c_str() );
+		vme.itemName = m_flattenedProps[i].hashName;
 		vme.itemType = typemap[m_flattenedProps[i].varInfo->GetType()];
 		vmstruct->properties.push_back( vme );
 	}
