@@ -390,28 +390,6 @@ EmbedDecl<EmbedDeclAst *&embed>
 	.
 
 
-Def<DefDecl *&def>				(. VarDeclAst *varDecl; ProcDeclAst *procDecl; EmbedDeclAst *embedDecl; .)
-=
-	"def"
-	ident							(. def = new DefDecl( t->val ); .)
-	(
-		[
-			"extends"
-			ident					(. def->SetExtends( t->val ); .)
-		]
-	)
-	'{'
-		{
-			VarDecl<varDecl>		(. def->AddVarDecl( varDecl ); .)
-			| 
-			EmbedDecl<embedDecl>	(. def->AddEmbedDecl( embedDecl ); .)
-			| 
-			ProcDecl<procDecl>		(. def->AddProcDecl( procDecl ); .)
-		}
-	'}'
-	';'
-	.
-
 Struct<DefDecl *&def>				(. VarDeclAst *varDecl; .)
 =
 	"struct"
