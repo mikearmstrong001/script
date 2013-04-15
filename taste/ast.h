@@ -303,10 +303,9 @@ class CallAst : public AstBase
 {
 	AstVec m_callExpr;
 	std::wstring m_name;
-	IdentVec m_identVec;
 public:
 
-	CallAst( const wchar_t *token, const IdentVec &v, AstVec &expr ) : m_name(token) , m_identVec(v), m_callExpr(expr) {}
+	CallAst( const wchar_t *token, AstVec &expr ) : m_name(token), m_callExpr(expr) {}
 
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };

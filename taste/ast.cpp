@@ -410,38 +410,12 @@ void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Packa
 		//assert( var );
 	}
 
-	if ( m_identVec.size() )
-	{
-		std::vector<int> lookup;
-		lookup.push_back( 0 );
-		for (unsigned int i=0; i<(m_identVec.size()-1); i++)
-		{
-			lookup.push_back( Hash( m_identVec[i].c_str() ) );
-		}
-		if ( index == 0x7fffffff )
-		{
-			VarDeclAst *var = pkg->FindVar( m_name.c_str() );
-			assert( var );
-			lookup[0] = Hash( m_name.c_str() );
-			AddOp(oplist,OPC_PUSHITEMG, lookup );
-		}
-		else
-		{
-			lookup[0] = index;
-			AddOp(oplist,OPC_PUSHITEM, lookup );
-		}
-	}
-
 	for (unsigned int i=0; i<m_callExpr.size(); i++)
 	{
 		m_callExpr[i]->Generate(oplist,frame,pkg);
 	}
 	std::vector<int> lookup;
 	lookup.push_back( 0 );
-	for (unsigned int i=0; i<m_identVec.size(); i++)
-	{
-		lookup.push_back( Hash( m_identVec[i].c_str() ) );
-	}
 
 	if ( index == 0x7fffffff )
 	{

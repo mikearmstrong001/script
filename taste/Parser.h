@@ -103,27 +103,21 @@ int // operators
 		package = NULL;
 	}
 
-	bool IsMemberFunc()
-	{
-		Token *next0 = scanner->Peek();
-		Token *next1 = scanner->Peek();
-		return la->val[0] == '<' && next1->val[0] == '>';
-	}
-
 	bool IsFunction()
 	{
-		if ( la->val[0] == '<' )
+		Token *next0 = scanner->Peek();
+		if ( next0->val[0] == '<' )
 		{
-			Token *next0 = scanner->Peek();
 			Token *next1 = scanner->Peek();
-			if ( next1->val[0] != '>' )
-				return false;
 			Token *next2 = scanner->Peek();
-			return next2->val[0] == '(';
+			if ( next2->val[0] != '>' )
+				return false;
+			Token *next3 = scanner->Peek();
+			return next3->val[0] == '(';
 		}
 		else
 		{
-			return la->val[0] == '(';
+			return next0->val[0] == '(';
 		}
 	}
 
@@ -143,7 +137,6 @@ int // operators
 	void Expr(AstBase* &expr);
 	void SimExpr(AstBase* &expr);
 	void RelOp(int &op);
-	void ObjectMemberList(IdentVec &vec);
 	void Factor(AstBase* &factor);
 	void ExprList(AstVec &vec);
 	void Declaration(DeclInfo &decl);

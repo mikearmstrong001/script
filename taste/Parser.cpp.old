@@ -217,33 +217,35 @@ void Parser::Factor(AstBase* &factor) {
 		AstBase *other_factor; 
 		switch (la->kind) {
 		case _ident: {
-			Get();
-			IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstVec exprVec; AstBase *expr; 
-			if (StartOf(2)) {
+			if (IsFunction()) {
+				Expect(_ident);
+				std::wstring funcName; AstVec exprVec; 
+				if (la->kind == 20 /* "<" */) {
+					Get();
+					Expect(_ident);
+					Expect(21 /* ">" */);
+				}
+				Expect(22 /* "(" */);
+				if (StartOf(2)) {
+					ExprList(exprVec);
+				}
+				Expect(23 /* ")" */);
+				factor = new CallAst( funcName.c_str(), exprVec ); 
+			} else {
+				Get();
+				IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstBase *expr; 
 				if (la->kind == 12 /* "[" */) {
 					Get();
 					Expr(expr);
 					identFactor->SetArrayIndex( expr ); 
 					Expect(13 /* "]" */);
-				} else if (la->kind == 19 /* "." */) {
-					Get();
-					ObjectMemberList(identVec);
-					identFactor->SetMemberList( identVec ); 
-				} else {
-					if (IsFunction()) {
-						if (la->kind == 20 /* "<" */) {
-							Get();
-							Expect(_ident);
-							Expect(21 /* ">" */);
-						}
-						Expect(22 /* "(" */);
-						if (StartOf(3)) {
-							ExprList(exprVec);
-						}
-						Expect(23 /* ")" */);
-						factor = new CallAst( identFactor->GetNameWC(), identVec, exprVec ); delete identFactor; 
-					}
 				}
+				while (la->kind == 19 /* "." */) {
+					Get();
+					Expect(_ident);
+					identVec.push_back( t->val ); 
+				}
+				identFactor->SetMemberList( identVec ); 
 			}
 			break;
 		}
@@ -337,7 +339,7 @@ void Parser::ProcDecl(ProcDeclAst* &procDecl) {
 		Expect(23 /* ")" */);
 		procDecl->SetDeclaration(declVec); 
 		Expect(28 /* "{" */);
-		while (StartOf(4)) {
+		while (StartOf(3)) {
 			if (la->kind == 11 /* "var" */) {
 				VarDecl(varDecl);
 				procDecl->AddBody( varDecl ); 
@@ -358,8 +360,8 @@ void Parser::Stat(AstBase *&stat) {
 			Expect(23 /* ")" */);
 			IfAst *ifstat = new IfAst( expr ); stat = ifstat; 
 			Expect(28 /* "{" */);
-			while (StartOf(4)) {
-				if (StartOf(5)) {
+			while (StartOf(3)) {
+				if (StartOf(4)) {
 					Stat(substat);
 					ifstat->AddIf( substat ); 
 				} else {
@@ -371,8 +373,8 @@ void Parser::Stat(AstBase *&stat) {
 			if (la->kind == 32 /* "else" */) {
 				Get();
 				Expect(28 /* "{" */);
-				while (StartOf(4)) {
-					if (StartOf(5)) {
+				while (StartOf(3)) {
+					if (StartOf(4)) {
 						Stat(substat);
 						ifstat->AddElse( substat ); 
 					} else {
@@ -384,7 +386,7 @@ void Parser::Stat(AstBase *&stat) {
 			}
 		} else if (la->kind == 33 /* "return" */) {
 			Get();
-			if (StartOf(3)) {
+			if (StartOf(2)) {
 				Expr(expr);
 			}
 			Expect(14 /* ";" */);
@@ -396,8 +398,8 @@ void Parser::Stat(AstBase *&stat) {
 			Expect(23 /* ")" */);
 			WhileAst *whilestat = new WhileAst( expr ); stat = whilestat; 
 			Expect(28 /* "{" */);
-			while (StartOf(4)) {
-				if (StartOf(5)) {
+			while (StartOf(3)) {
+				if (StartOf(4)) {
 					Stat(substat);
 					whilestat->AddExpr( substat ); 
 				} else {
@@ -409,8 +411,8 @@ void Parser::Stat(AstBase *&stat) {
 		} else if (la->kind == 28 /* "{" */) {
 			Get();
 			BlockAst *blockstat = new BlockAst; stat = blockstat; 
-			while (StartOf(4)) {
-				if (StartOf(5)) {
+			while (StartOf(3)) {
+				if (StartOf(4)) {
 					Stat(substat);
 					blockstat->AddExpr( substat ); 
 				} else {
@@ -419,6 +421,22 @@ void Parser::Stat(AstBase *&stat) {
 				}
 			}
 			Expect(29 /* "}" */);
+		} else if (IsFunction()) {
+			Expect(_ident);
+			std::wstring funcName = t->val; 
+			if (la->kind == 20 /* "<" */) {
+				Get();
+				Expect(_ident);
+				Expect(21 /* ">" */);
+			}
+			Expect(22 /* "(" */);
+			AstVec exprVec; 
+			if (StartOf(2)) {
+				ExprList(exprVec);
+			}
+			Expect(23 /* ")" */);
+			stat = new CallAst( funcName.c_str(), exprVec ); 
+			Expect(14 /* ";" */);
 		} else if (la->kind == _ident) {
 			Get();
 			IdentAst *identStat = new IdentAst( t->val ); stat = identStat; IdentVec identVec; AstBase *expr; 
@@ -433,25 +451,10 @@ void Parser::Stat(AstBase *&stat) {
 				ObjectMemberList(identVec);
 				identStat->SetMemberList( identVec ); 
 			}
-			if (la->kind == 20 /* "<" */ || la->kind == 22 /* "(" */ || la->kind == 35 /* "=" */) {
-				if (la->kind == 35 /* "=" */) {
-					Get();
-					Expr(expr);
-					stat = new AssignAst( identStat->GetNameWC(), identStat->GetArrayIndex(), identVec, expr ); delete identStat; 
-				} else {
-					if (IsMemberFunc()) {
-						Expect(20 /* "<" */);
-						Expect(_ident);
-						Expect(21 /* ">" */);
-					}
-					Expect(22 /* "(" */);
-					AstVec exprVec; 
-					if (StartOf(3)) {
-						ExprList(exprVec);
-					}
-					Expect(23 /* ")" */);
-					stat = new CallAst( identStat->GetNameWC(), identVec, exprVec ); delete identStat; 
-				}
+			if (la->kind == 35 /* "=" */) {
+				Get();
+				Expr(expr);
+				stat = new AssignAst( identStat->GetNameWC(), identStat->GetArrayIndex(), identVec, expr ); delete identStat; 
 			}
 			Expect(14 /* ";" */);
 		} else SynErr(46);
@@ -519,7 +522,7 @@ void Parser::Taste() {
 		Expect(_ident);
 		package = new Package( t->val ); 
 		Expect(28 /* "{" */);
-		while (StartOf(6)) {
+		while (StartOf(5)) {
 			if (la->kind == 37 /* "interface" */) {
 				Interface(ifaceDecl);
 				package->AddInterfaceDecl( ifaceDecl ); 
@@ -653,10 +656,9 @@ bool Parser::StartOf(int s) {
 	const bool T = true;
 	const bool x = false;
 
-	static bool set[7][41] = {
+	static bool set[6][41] = {
 		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
 		{x,T,x,x, x,T,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,x,T, T,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
 		{x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,x,T,x, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
 		{x,T,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, x,T,T,x, x,x,x,x, x},
 		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, x,T,T,x, x,x,x,x, x},
