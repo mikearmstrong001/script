@@ -251,12 +251,10 @@ class VarDeclAst : public AstBase
 	int m_type;
 	bool m_isarray;
 	std::wstring m_name;
-	std::wstring m_prototype;
 public:
 	VarDeclAst() : m_type(0), m_isarray(false) {}
 
 	void SetType( int type ) { m_type = type; }
-	void SetPrototype( const wchar_t *name ) { m_prototype = name; }
 	void SetName( const wchar_t *name ) { m_name = name; }
 	void SetIsArray() { m_isarray = true; }
 
@@ -266,7 +264,6 @@ public:
 	bool IsUserType() const { return (unsigned int)m_type >= MAX_VARTYPE; }
 
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
-	virtual void GenerateConstructor( std::vector<int> &oplist, StackFrame &frame );
 };
 
 class ProcDeclAst : public AstBase
@@ -379,10 +376,9 @@ public:
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };
 
-class DefDecl
+class StructDecl
 {
 	std::wstring m_name;
-	std::wstring m_extends;
 	std::vector< VarDeclAst* > m_varDecls;
 	std::vector< ProcDeclAst* > m_procs;
 	std::vector< EmbedDeclAst* > m_embeds;
@@ -396,24 +392,20 @@ class DefDecl
 
 	std::vector< Element > m_flattenedProps;
 
-
 public:
 
-	DefDecl( const wchar_t *name ) : m_name(name) {}
+	StructDecl( const wchar_t *name ) : m_name(name) {}
 
-	void SetExtends( const wchar_t *ex ) { m_extends = ex; }
 	void AddVarDecl( VarDeclAst *v ) { m_varDecls.push_back(v); }
 	void AddProcDecl( ProcDeclAst *p ) { m_procs.push_back(p); }
 	void AddEmbedDecl( EmbedDeclAst *p ) { m_embeds.push_back(p); }
 
 	std::wstring const &GetName() const { return m_name; }
-	std::wstring const &GetExtends() const { return m_extends; }
 
 	std::vector< Element > const &GetProps() const { return m_flattenedProps; }
 
 	int FindElementIndex( int hashName );
 
-	virtual void GenerateDef( std::vector<int> &oplist, vmstate &state, class Package *pkg );
 	virtual void GenerateProps( class Package *pkg, vmstate &state );
 };
 
@@ -457,23 +449,21 @@ class Package
 	std::wstring m_name;
 	std::vector< VarDeclAst* > m_varDecls;
 	std::vector< ProcDeclAst* > m_procs;
-	std::vector< DefDecl* > m_defs;
-	std::vector< DefDecl* > m_structs;
+	std::vector< StructDecl* > m_structs;
 	std::vector< InterfaceDecl* > m_interfaces;
 
 public:
 
 	Package( const wchar_t *name ) : m_name(name) {}
 
-	DefDecl *FindStruct( const wchar_t *name );
-	DefDecl *FindStruct( int name );
+	StructDecl *FindStruct( const wchar_t *name );
+	StructDecl *FindStruct( int name );
 	VarDeclAst *FindVar( const wchar_t *name );
 	VarDeclAst *FindVar( int name );
 	ProcDeclAst *FindProc( const wchar_t *name );
 	ProcDeclAst *FindProc( int name );
 
-	void AddDefDecl( DefDecl *v ) { m_defs.push_back(v); }
-	void AddStructDecl( DefDecl *v ) { m_structs.push_back(v); }
+	void AddStructDecl( StructDecl *v ) { m_structs.push_back(v); }
 	void AddInterfaceDecl( InterfaceDecl *v ) { m_interfaces.push_back(v); }
 	void AddVarDecl( VarDeclAst *v ) { m_varDecls.push_back(v); }
 	void AddProcDecl( ProcDeclAst *p ) { m_procs.push_back(p); }

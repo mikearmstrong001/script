@@ -2,19 +2,8 @@
 package Test {
 	var int[] items0;
 	var float[] items1;
-	var object[] items2;
 	var t1 items3;
 	//var t1[] items4;
-
-	interface CanCreate
-	{
-		function void onCreate( object self, object createParams );
-	};
-
-	interface CanUpdate
-	{
-		function void onUpdate( object self, float dt );
-	};
 
 	struct t1
 	{
@@ -28,67 +17,15 @@ package Test {
 		var float c;
 	};
 
-	def foo
-	{
-		var float[] x;
-		var float y;
-
-		function void onCreate( object createParams )
-		{
-			self.y = 1.0;
-		}
-	};
-
-	def bah
-	{
-		embed foo;
-		var int a;
-		var int b;
-		var float c;
-		var userptr renderHandle;
-		var t1 d;
-
-		function void onCreate( object createParams )
-		{
-			//super.onCreate( self, createParams );
-			self.d.a = 1;
-			self.pos.x = createParams.pos.x;
-			self.pos.y = createParams.pos.y;
-			self.dir.x = createParams.dir.x;
-			self.dir.y = createParams.dir.y;
-		}
-
-		function void onUpdate( float dt )
-		{
-			self.pos.x = self.pos.x + self.dir.x * dt;
-			self.pos.y = self.pos.y + self.dir.y * dt;
-			if ( self.pos.y > 10.0 )
-			{
-				self.dir.y = -self.dir.y;
-			}
-		
-			if ( self.pos.y < 0.0 )
-			{
-				self.dir.y = -self.dir.y;
-			}
-			printffloat( self.pos.y );
-			printffloat( self.dir.y );
-		}
-
-    
-	};
-
 	function float testret()
 	{
 		return 8.0;
 	}
-
 	
 	function void Main()
 	{
 		items3.a = 1;
 		items3.b = items3.a;
-		// not quite write yet items4[0].a = 1;
 		var t2 p;
 		p.c = 1.0;
 		p.t.a = 2;
@@ -99,18 +36,7 @@ package Test {
 		var string[] strarray;
 		strarray.pushback( str );
 
-		var object t = new bah;
-		var object o;
 		var int c;
-		c = t.implements(CanCreate);
-		items2.pushback( t );
-		var int c2;
-		c2 = items2.size();
-		o.pos.x = 0.0;
-		o.pos.y = 0.0;
-		o.dir.x = 0.0;
-		o.dir.y = 1.0;
-		t.onCreate( o );
 		var float f;
 		f = testret();
 		f = cfunc( 10 );
@@ -119,17 +45,11 @@ package Test {
 		while ( i > 0 )
 		{
 			var int numitems;
-			numitems = items2.size();
+			numitems = 0;
 			var int j;
 			j=0;
 			while ( j < numitems )
 			{
-				var object curj;
-				curj = items2[j];
-				if ( curj.implements( CanUpdate ) )
-				{
-					curj.onUpdate( 0.1 );
-				}
 				j = j+1;
 			}
 			i = i - 1;

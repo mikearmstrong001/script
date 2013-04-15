@@ -268,7 +268,6 @@ enum VARTYPE
 	UNKNOWN,
 	INTEGER,
 	FLOATINGPOINT,
-	OBJECT,
 	VOID,
 	USERPTR,
 	STRING,
@@ -277,14 +276,11 @@ enum VARTYPE
 	CFUNCTION,
 	INTEGERARRAY,
 	FLOATINGPOINTARRAY,
-	OBJECTARRAY,
 	USERPTRARRAY,
 	STRINGARRAY,
 
 	MAX_VARTYPE,
 };
-
-struct vmobject;
 
 template<class T>
 struct vmarrayvar
@@ -300,13 +296,11 @@ struct var
 	{
 		int i;
 		float f;
-		vmobject *o;
 		void *u;
 		vmstring *str;
 		struct vmstruct *s;
 		vmarrayvar<int> *iArrayPtr;
 		vmarrayvar<float> *fArrayPtr;
-		vmarrayvar<vmobject*> *oArrayPtr;
 		vmarrayvar<void*> *uArrayPtr;
 		vmarrayvar<vmstring*> *strArrayPtr;
 		bool (*cfunc)( struct vmstate &state );
@@ -323,14 +317,6 @@ struct vmstruct
 };
 #pragma warning(pop)
 
-
-struct vmobject
-{
-	int prototype;
-	Map<var> m_tbl;
-
-	vmobject() : prototype(-1) {}
-};
 
 inline int Hash( const wchar_t *v )
 {

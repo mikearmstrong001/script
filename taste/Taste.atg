@@ -7,7 +7,7 @@ COMPILER Taste
 	  plus, minus, times, slash, equ, lss, gtr;
 
 	int // types
-	  undef, integer, boolean, floatingpoint, object, voidtype, userptr, stringtype;
+	  undef, integer, boolean, floatingpoint, voidtype, userptr, stringtype;
 
 	int // object kinds
 	  var, proc;
@@ -20,7 +20,7 @@ COMPILER Taste
 
 	void InitDeclarations() { // it must exist
 		plus = 0; minus = 1; times = 2; slash = 3; equ = 4; lss = 5; gtr = 6; // operators
-		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; object = 4; voidtype = 5; userptr = 6; stringtype=7; // types
+		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; voidtype = 4; userptr = 5; stringtype=6; // types
 		var = 0; proc = 1; // object kinds
 		package = NULL;
 	}
@@ -54,17 +54,8 @@ IGNORE cr + lf + tab
 
 PRODUCTIONS
 /*------------------------------------------------------------------------*/
-Type<int &type>
-=
- ( "int"						(. type = integer; .)
- | "bool"						(. type = boolean; .)
- | "float"						(. type = floatingpoint; .)
- | "object"						(. type = object; .)
- | "userptr"					(. type = userptr; .)
- | "string"						(. type = stringtype; .)
- ).
 
-TypeNotObject<int &type>
+Type<int &type>
 =
  ( "int"						(. type = integer; .)
  | "bool"						(. type = boolean; .)
@@ -88,27 +79,8 @@ VarDecl<VarDeclAst* &varDecl>	(. int type; varDecl = new VarDeclAst; .)
 = 
 	"var"
 	(
-		( 
-			"object"						(. varDecl->SetType(object); .)
-			( 
-				[ 
-					'[' ']'					(. varDecl->SetIsArray(); .)
-				]
-			)
-			ident							(. varDecl->SetName(t->val); .)
-			[ '='  
-				( 
-					( 
-						"new" 
-						ident				(. varDecl->SetPrototype(t->val); .) 
-					)
-				)
-			]
-			';' 
-		)
-		|
 		(
-			TypeNotObject<type>				(. varDecl->SetType(type); .)
+			Type<type>				(. varDecl->SetType(type); .)
 			( 
 				[ 
 					'[' ']'					(. varDecl->SetIsArray(); .)
@@ -382,18 +354,11 @@ Stat<AstBase *&stat>			(. VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *su
 	)
 	.
 
-EmbedDecl<EmbedDeclAst *&embed>
-=
-	"embed"
-	ident						(. embed = new EmbedDeclAst( t->val ); .)
-	";"
-	.
 
-
-Struct<DefDecl *&def>				(. VarDeclAst *varDecl; .)
+Struct<StructDecl *&def>				(. VarDeclAst *varDecl; .)
 =
 	"struct"
-	ident							(. def = new DefDecl( t->val ); .)
+	ident							(. def = new StructDecl( t->val ); .)
 	'{'
 		{
 			VarDecl<varDecl>		(. def->AddVarDecl( varDecl ); .)
@@ -430,13 +395,12 @@ Interface<InterfaceDecl *&def>				(. ProcDefDeclAst *procDecl; .)
 	.
 
 /*------------------------------------------------------------------------*/
-Taste			(. DefDecl *defDecl; VarDeclAst *varDecl; ProcDeclAst *procDecl; InterfaceDecl *ifaceDecl; .)
+Taste			(. StructDecl *defDecl; VarDeclAst *varDecl; ProcDeclAst *procDecl; InterfaceDecl *ifaceDecl; .)
 = "package"		
   ident			(. package = new Package( t->val ); .)
   '{'
 	  { 
-		Def<defDecl>		(. package->AddDefDecl( defDecl ); .)
-		| Interface<ifaceDecl>  (. package->AddInterfaceDecl( ifaceDecl ); .)
+		Interface<ifaceDecl>  (. package->AddInterfaceDecl( ifaceDecl ); .)
 		| Struct<defDecl>  (. package->AddStructDecl( defDecl ); .)
 		| VarDecl<varDecl>		(. package->AddVarDecl( varDecl ); .)
 		| ProcDecl<procDecl>	(. package->AddProcDecl( procDecl ); .)
