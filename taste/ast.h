@@ -380,8 +380,6 @@ class StructDecl
 {
 	std::wstring m_name;
 	std::vector< VarDeclAst* > m_varDecls;
-	std::vector< ProcDeclAst* > m_procs;
-	std::vector< EmbedDeclAst* > m_embeds;
 
 	struct Element
 	{
@@ -397,8 +395,6 @@ public:
 	StructDecl( const wchar_t *name ) : m_name(name) {}
 
 	void AddVarDecl( VarDeclAst *v ) { m_varDecls.push_back(v); }
-	void AddProcDecl( ProcDeclAst *p ) { m_procs.push_back(p); }
-	void AddEmbedDecl( EmbedDeclAst *p ) { m_embeds.push_back(p); }
 
 	std::wstring const &GetName() const { return m_name; }
 

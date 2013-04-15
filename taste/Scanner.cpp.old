@@ -464,14 +464,14 @@ void Scanner::Init() {
 	start.set(42, 13);
 	start.set(47, 14);
 	start.set(46, 15);
-	start.set(40, 16);
-	start.set(41, 17);
-	start.set(44, 18);
-	start.set(123, 19);
-	start.set(125, 20);
+	start.set(60, 16);
+	start.set(62, 17);
+	start.set(40, 18);
+	start.set(41, 19);
+	start.set(44, 20);
+	start.set(123, 21);
+	start.set(125, 22);
 	start.set(61, 24);
-	start.set(60, 22);
-	start.set(62, 23);
 		start.set(Buffer::EoF, -1);
 	keywords.set(L"int", 5);
 	keywords.set(L"bool", 6);
@@ -480,9 +480,9 @@ void Scanner::Init() {
 	keywords.set(L"string", 9);
 	keywords.set(L"void", 10);
 	keywords.set(L"var", 11);
-	keywords.set(L"true", 22);
-	keywords.set(L"false", 23);
-	keywords.set(L"function", 25);
+	keywords.set(L"true", 24);
+	keywords.set(L"false", 25);
+	keywords.set(L"function", 27);
 	keywords.set(L"if", 31);
 	keywords.set(L"else", 32);
 	keywords.set(L"return", 33);
@@ -729,21 +729,21 @@ Token* Scanner::NextToken() {
 		case 17:
 			{t->kind = 21; break;}
 		case 18:
-			{t->kind = 24; break;}
+			{t->kind = 22; break;}
 		case 19:
-			{t->kind = 26; break;}
+			{t->kind = 23; break;}
 		case 20:
-			{t->kind = 27; break;}
+			{t->kind = 26; break;}
 		case 21:
-			case_21:
 			{t->kind = 28; break;}
 		case 22:
 			{t->kind = 29; break;}
 		case 23:
+			case_23:
 			{t->kind = 30; break;}
 		case 24:
 			recEnd = pos; recKind = 35;
-			if (ch == L'=') {AddCh(); goto case_21;}
+			if (ch == L'=') {AddCh(); goto case_23;}
 			else {t->kind = 35; break;}
 
 	}

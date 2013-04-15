@@ -132,7 +132,7 @@ void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pack
 	if ( m_index != 0 )
 	{
 		m_index->Generate( oplist, frame, pkg );
-		if ( e.type == STRUCT )
+		if ( e.type == STRUCT && m_identVec.size() )
 		{
 			int lookupName = Hash( m_identVec[0].c_str() );
 			for (unsigned int i=1; i<m_identVec.size(); i++)
@@ -168,7 +168,7 @@ void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pack
 	}
 	else
 	{
-		if ( e.type == STRUCT )
+		if ( e.type == STRUCT && m_identVec.size() )
 		{
 			int lookupName = Hash( m_identVec[0].c_str() );
 			for (unsigned int i=1; i<m_identVec.size(); i++)
@@ -279,7 +279,14 @@ void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class P
 	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, USERPTR };
 	for (unsigned int i=0; i<m_declaration.size(); i++)
 	{
-		frame.AddEntry( m_declaration[i].name, typemap[m_declaration[i].type] );
+		if ( (unsigned int)m_declaration[i].type >= MAX_VARTYPE )
+		{
+			frame.AddEntry( m_declaration[i].name, STRUCT, m_declaration[i].type );
+		}
+		else
+		{
+			frame.AddEntry( m_declaration[i].name, typemap[m_declaration[i].type] );
+		}
 	}
 	int patch0 = AddOp( oplist, OPC_PUSHENV, 0 );
 	int startProcFrame = frame.PushFrame();
@@ -316,7 +323,7 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pac
 	if ( m_arrayIndex != 0 )
 	{
 		m_arrayIndex->Generate( oplist, frame, pkg );
-		if ( e.type == STRUCT )
+		if ( e.type == STRUCT && m_identVec.size() )
 		{
 			int lookupName = Hash( m_identVec[0].c_str() );
 			for (unsigned int i=1; i<m_identVec.size(); i++)
@@ -349,7 +356,7 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pac
 	}
 	else
 	{
-		if ( e.type == STRUCT )
+		if ( e.type == STRUCT && m_identVec.size() )
 		{
 			int lookupName = Hash( m_identVec[0].c_str() );
 			for (unsigned int i=1; i<m_identVec.size(); i++)

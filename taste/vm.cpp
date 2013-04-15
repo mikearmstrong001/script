@@ -654,9 +654,16 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				var &item = state.stack[state.envStack.top()+index];
 				if ( item.type == STRUCT )
 				{
-					CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
-					int eleIndex = ops[pc++];
-					state.stack.push( item.s->m_data[eleIndex] );
+					if ( entries == 0 )
+					{
+						state.stack.push( item );
+					}
+					else
+					{
+						CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
+						int eleIndex = ops[pc++];
+						state.stack.push( item.s->m_data[eleIndex] );
+					}
 				}
 				else
 				if ( entries )
@@ -717,9 +724,16 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				var &item = state.globals[index];
 				if ( item.type == STRUCT )
 				{
-					CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
-					int eleIndex = ops[pc++];
-					state.stack.push( item.s->m_data[eleIndex] );
+					if ( entries == 0 )
+					{
+						state.stack.push( item );
+					}
+					else
+					{
+						CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
+						int eleIndex = ops[pc++];
+						state.stack.push( item.s->m_data[eleIndex] );
+					}
 				}
 				else
 				if ( entries )

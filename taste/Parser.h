@@ -103,6 +103,29 @@ int // operators
 		package = NULL;
 	}
 
+	bool IsMemberFunc()
+	{
+		Token *next0 = scanner->Peek();
+		Token *next1 = scanner->Peek();
+		return la->val[0] == '<' && next1->val[0] == '>';
+	}
+
+	bool IsFunction()
+	{
+		if ( la->val[0] == '<' )
+		{
+			Token *next0 = scanner->Peek();
+			Token *next1 = scanner->Peek();
+			if ( next1->val[0] != '>' )
+				return false;
+			Token *next2 = scanner->Peek();
+			return next2->val[0] == '(';
+		}
+		else
+		{
+			return la->val[0] == '(';
+		}
+	}
 
   
 /*--------------------------------------------------------------------------*/

@@ -17,6 +17,11 @@ package Test {
 		var float c;
 	};
 
+	function float testret2<t2 v>()
+	{
+		return 8.0;
+	}
+
 	function float testret()
 	{
 		return 8.0;
@@ -24,17 +29,19 @@ package Test {
 	
 	function void Main()
 	{
+		var t2 p;
+
+		p.c = testret<p>();
+		p.t.a = 2;
+
 		items3.a = 1;
 		items3.b = items3.a;
-		var t2 p;
-		p.c = 1.0;
-		p.t.a = 2;
 
 		var string str;
 		str = "blah";
 
 		var string[] strarray;
-		strarray.pushback( str );
+		pushback<strarray>( str );
 
 		var int c;
 		var float f;

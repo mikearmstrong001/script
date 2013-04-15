@@ -98,11 +98,31 @@ int // operators
 
 	void InitDeclarations() { // it must exist
 		plus = 0; minus = 1; times = 2; slash = 3; equ = 4; lss = 5; gtr = 6; // operators
-		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; voidtype = 5; userptr = 6; stringtype=7; // types
+		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; voidtype = 4; userptr = 5; stringtype=6; // types
 		var = 0; proc = 1; // object kinds
 		package = NULL;
 	}
 
+	bool IsMemberFunc()
+	{
+		Token *next0 = scanner->Peek();
+		Token *next1 = scanner->Peek();
+		return la->val[0] == '<' && next1->val[0] == '>';
+	}
+
+	bool IsFunction()
+	{
+		if ( la->val[0] == '<' )
+		{
+			Token *next0 = scanner->Peek();
+			Token *next1 = scanner->Peek();
+			if ( next1->val[0] != '>' )
+				return false;
+			Token *next2 = scanner->Peek();
+			return next2->val[0] == '(';
+		}
+		else
+	}
 
   
 /*--------------------------------------------------------------------------*/

@@ -25,6 +25,29 @@ COMPILER Taste
 		package = NULL;
 	}
 
+	bool IsMemberFunc()
+	{
+		Token *next0 = scanner->Peek();
+		Token *next1 = scanner->Peek();
+		return la->val[0] == '<' && next1->val[0] == '>';
+	}
+
+	bool IsFunction()
+	{
+		if ( la->val[0] == '<' )
+		{
+			Token *next0 = scanner->Peek();
+			Token *next1 = scanner->Peek();
+			if ( next1->val[0] != '>' )
+				return false;
+			Token *next2 = scanner->Peek();
+			return next2->val[0] == '(';
+		}
+		else
+		{
+			return la->val[0] == '(';
+		}
+	}
 
   
 /*--------------------------------------------------------------------------*/
@@ -134,7 +157,7 @@ ObjectMemberList<IdentVec &vec>
 /*------------------------------------------------------------------------*/
 Factor<AstBase* &factor>			(. AstBase *other_factor; .)
 =                        
-	( 
+	(
 		ident						(. IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstVec exprVec; AstBase *expr; .)
 		[
 			( 
@@ -145,21 +168,21 @@ Factor<AstBase* &factor>			(. AstBase *other_factor; .)
 			| 
 			(
 				'.' ObjectMemberList<identVec>	(. identFactor->SetMemberList( identVec ); .)
-				[ 
-					"(" 
-						[
-							ExprList<exprVec>		
-						] 
-					")"					(. factor = new CallAst( identFactor->GetNameWC(), identVec, exprVec ); delete identFactor; .)
-				]
 			)
 			| 
 			(
+			[ IF(IsFunction())
+				[
+					'<'
+					ident
+					'>'
+				]
 				"("
 					[ 
 						ExprList<exprVec>	
 					]
 				")"					(. factor = new CallAst( identFactor->GetNameWC(), identVec, exprVec ); delete identFactor; .)
+			]
 			)
 		]
 	)
@@ -224,6 +247,12 @@ ProcDecl<ProcDeclAst* &procDecl>		(. VarDeclAst *varDecl; int type; AstBase *sta
 	"function"							(. procDecl = new ProcDeclAst(); .)
 	ReturnType<type>						(. procDecl->SetReturnType( type ); .)
 	ident									(. procDecl->SetName( t->val ); .)
+	[
+		'<'
+		ident
+		ident
+		'>'
+	]
 	'('
 		[ 
 			DeclarationList<declVec>
@@ -324,17 +353,15 @@ Stat<AstBase *&stat>			(. VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *su
 	(
 		ident							(. IdentAst *identStat = new IdentAst( t->val ); stat = identStat; IdentVec identVec; AstBase *expr; .)
 		(
-			 
-				[
-					'['
-					Expr<expr>					(. identStat->SetArrayIndex( expr ); .)
-					']'				
-				]
-				[
-					'.' 
-					ObjectMemberList<identVec> (. identStat->SetMemberList( identVec ); .)
-				]
-			
+			[
+				'['
+				Expr<expr>					(. identStat->SetArrayIndex( expr ); .)
+				']'				
+			]
+			[
+				'.' 
+				ObjectMemberList<identVec> (. identStat->SetMemberList( identVec ); .)
+			]			
 			[
 				( 
 					'='
@@ -342,6 +369,12 @@ Stat<AstBase *&stat>			(. VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *su
 				)
 				| 
 				(
+					[
+						IF(IsMemberFunc())
+						'<'
+						ident
+						'>'
+					]
 					'('							(. AstVec exprVec; .)
 						[
 							ExprList<exprVec>
