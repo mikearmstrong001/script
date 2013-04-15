@@ -210,10 +210,11 @@ void Parser::Factor(AstBase* &factor) {
 		case _ident: {
 			if (IsFunction()) {
 				Expect(_ident);
-				std::wstring funcName = t->val; AstVec exprVec; 
+				std::wstring funcName = t->val; std::wstring typed; AstVec exprVec; 
 				if (la->kind == 19 /* "<" */) {
 					Get();
 					Expect(_ident);
+					typed = t->val; 
 					Expect(20 /* ">" */);
 				}
 				Expect(21 /* "(" */);
@@ -221,7 +222,7 @@ void Parser::Factor(AstBase* &factor) {
 					ExprList(exprVec);
 				}
 				Expect(22 /* ")" */);
-				factor = new CallAst( funcName.c_str(), exprVec ); 
+				factor = new CallAst( funcName.c_str(), typed.c_str(), exprVec ); 
 			} else {
 				Get();
 				IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstBase *expr; 
@@ -320,7 +321,9 @@ void Parser::ProcDecl(ProcDeclAst* &procDecl) {
 		if (la->kind == 19 /* "<" */) {
 			Get();
 			Expect(_ident);
+			procDecl->SetTyped( t->val ); 
 			Expect(_ident);
+			procDecl->SetTypedVar( t->val ); 
 			Expect(20 /* ">" */);
 		}
 		Expect(21 /* "(" */);
@@ -414,10 +417,11 @@ void Parser::Stat(AstBase *&stat) {
 			Expect(29 /* "}" */);
 		} else if (IsFunction()) {
 			Expect(_ident);
-			std::wstring funcName = t->val; 
+			std::wstring funcName = t->val; std::wstring typed; 
 			if (la->kind == 19 /* "<" */) {
 				Get();
 				Expect(_ident);
+				typed = t->val; 
 				Expect(20 /* ">" */);
 			}
 			Expect(21 /* "(" */);
@@ -426,7 +430,7 @@ void Parser::Stat(AstBase *&stat) {
 				ExprList(exprVec);
 			}
 			Expect(22 /* ")" */);
-			stat = new CallAst( funcName.c_str(), exprVec ); 
+			stat = new CallAst( funcName.c_str(), typed. c_str(), exprVec ); 
 			Expect(14 /* ";" */);
 		} else if (la->kind == _ident) {
 			Get();

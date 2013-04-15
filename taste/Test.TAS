@@ -19,7 +19,11 @@ package Test {
 
 	function float testret2<t2 v>()
 	{
-		return 8.0;
+		return v.c;
+	}
+	function float testret2<t1 v>()
+	{
+		return 8.1;
 	}
 
 	function float testret()
@@ -34,7 +38,8 @@ package Test {
 
 		var t2 p;
 
-		//p.c = testret2<p>();
+		p.c = testret2<p>();
+		p.c = testret2<items3>();
 		p.t.a = 2;
 
 		items3.a = 1;

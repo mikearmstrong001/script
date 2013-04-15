@@ -25,7 +25,8 @@ const char *opnames[] =
 	"OPC_POPENV",
 	"OPC_RET",
 	"OPC_CALL",
-	"OPC_CALLG",
+	"OPC_CALLTYPED",
+	"OPC_CALLTYPEDG",
 	"OPC_JF",
 	"OPC_JMP",
 	"OPC_POP",
@@ -376,9 +377,10 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			break;
 		case OPC_CALL:
 			{
-				var val = state.stack.top(); state.stack.pop();
+				int index = ops[pc++];
+				const var &val = state.globals[index];
 				if ( val.type == CFUNCTION )
-				{					
+				{
 					state.envStack.push( state.stack.size() );
 					bool res = val.cfunc( state );
 					// cfunc should clear the stack based on args
@@ -400,10 +402,45 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				}
 			}
 			break;
-		case OPC_CALLG:
+		case OPC_CALLTYPED:
 			{
 				int index = ops[pc++];
-				const var &val = state.globals[index];
+				int typed = ops[pc++];
+				const var &valtyped = state.stack[state.envStack.top()+typed];
+				int typehash = (valtyped.type == STRUCT) ? valtyped.s->m_type : valtyped.type;
+				const var &val = state.globals[index^typehash];
+				state.stack.push( valtyped );
+				if ( val.type == CFUNCTION )
+				{
+					state.envStack.push( state.stack.size() );
+					bool res = val.cfunc( state );
+					// cfunc should clear the stack based on args
+					state.envStack.pop();
+					if ( res )
+					{
+						state.stack.push( state.rv );
+					}
+				}
+				else
+				if ( val.type == VMFUNCTION )
+				{
+					state.pcStack.push( pc );
+					pc = val.i;
+				}
+				else
+				{
+					CEXCEPTION_ERROR("bad type");
+				}
+			}
+			break;
+		case OPC_CALLTYPEDG:
+			{
+				int index = ops[pc++];
+				int typed = ops[pc++];
+				const var &valtyped = state.globals[typed];
+				int typehash = (valtyped.type == STRUCT) ? valtyped.s->m_type : valtyped.type;
+				const var &val = state.globals[index^typehash];
+				state.stack.push( valtyped );
 				if ( val.type == CFUNCTION )
 				{
 					state.envStack.push( state.stack.size() );

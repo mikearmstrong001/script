@@ -273,8 +273,9 @@ void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pa
 
 void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
-	frame.StartFunction(m_declaration.size());
-	printf( "%S: %d\n", m_name.c_str(), Hash( m_name.c_str() ) );
+	frame.StartFunction(m_declaration.size()+ (!m_typed.empty() ? 1 : 0));
+	printf( "%S<%S>: %d\n", m_name.c_str(), m_typed.c_str(), Hash( m_name.c_str() ) );
+
 
 	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, USERPTR };
 	for (unsigned int i=0; i<m_declaration.size(); i++)
@@ -288,6 +289,10 @@ void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class P
 			frame.AddEntry( m_declaration[i].name, typemap[m_declaration[i].type] );
 		}
 	}
+	if ( !m_typed.empty() )
+	{
+		frame.AddEntry( m_typedVar.c_str(), STRUCT, Hash( m_typed.c_str() ) );
+	}
 	int patch0 = AddOp( oplist, OPC_PUSHENV, 0 );
 	int startProcFrame = frame.PushFrame();
 	for (unsigned int i=0; i<m_body.size(); i++)
@@ -298,7 +303,7 @@ void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class P
 	AddOp( oplist, OPC_POPENV );
 	oplist[patch0+1] = sizeProcFrame;
 
-	AddOp( oplist, OPC_POP, (int)m_declaration.size() );
+	AddOp( oplist, OPC_POP, (int)m_declaration.size() + (!m_typed.empty() ? 1 : 0));
 	AddOp( oplist, OPC_RET );
 	frame.EndFunction();
 }
@@ -402,32 +407,32 @@ void AssignAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pac
 
 void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
-	StackEntry e;
-	int index = frame.FindEntry( e, m_name );
-	if ( index == 0x7fffffff )
-	{
-		ProcDeclAst *var = pkg->FindProc( m_name.c_str() );
-		//assert( var );
-	}
+	ProcDeclAst *var = pkg->FindProc( m_name.c_str() );
 
 	for (unsigned int i=0; i<m_callExpr.size(); i++)
 	{
 		m_callExpr[i]->Generate(oplist,frame,pkg);
 	}
 	std::vector<int> lookup;
-	lookup.push_back( 0 );
+	lookup.push_back( Hash( m_name.c_str() ) );
 
-	if ( index == 0x7fffffff )
+	if ( !m_typed.empty() )
 	{
-		lookup[0] = Hash( m_name.c_str() );
-		AddOp(oplist,OPC_PUSHITEMG, lookup );
+		StackEntry e;
+		int index = frame.FindEntry( e, m_typed );
+		if ( index == 0x7fffffff )
+		{
+			AddOp( oplist, OPC_CALLTYPEDG, Hash( m_name.c_str() ), Hash( m_typed.c_str() ) );
+		}
+		else
+		{
+			AddOp( oplist, OPC_CALLTYPED, Hash( m_name.c_str() ), index );
+		}
 	}
 	else
 	{
-		lookup[0] = index;
-		AddOp(oplist,OPC_PUSHITEM, lookup );
+		AddOp( oplist, OPC_CALL, Hash( m_name.c_str() ) );
 	}
-	AddOp( oplist, OPC_CALL );
 }
 
 void IfAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
@@ -680,6 +685,10 @@ void Package::Generate()
 		if ( m_procs[i]->GetName() == L"Main" )
 			main = oplist.size();
 		int hash = Hash( m_procs[i]->GetName().c_str() );
+		if ( !m_procs[i]->GetTyped().empty() )
+		{
+			hash ^= Hash( m_procs[i]->GetTyped().c_str() );
+		}
 		state.globals[hash].type = VMFUNCTION;
 		state.globals[hash].i = oplist.size();
 		m_procs[i]->Generate(oplist,frame,this);

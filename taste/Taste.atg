@@ -144,17 +144,17 @@ Factor<AstBase* &factor>			(. AstBase *other_factor; .)
 =                        
 	(
 		IF(IsFunction())
-		ident						(. std::wstring funcName = t->val; AstVec exprVec; .)
+		ident						(. std::wstring funcName = t->val; std::wstring typed; AstVec exprVec; .)
 				[
 					'<'
-					ident
+					ident			(. typed = t->val; .)
 					'>'
 				]
 				"("
 					[ 
 						ExprList<exprVec>	
 					]
-				")"					(. factor = new CallAst( funcName.c_str(), exprVec ); .)
+				")"					(. factor = new CallAst( funcName.c_str(), typed.c_str(), exprVec ); .)
 		|
 		(
 			ident						(. IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstBase *expr; .)
@@ -228,12 +228,12 @@ ExprList<AstVec &vec>			(. AstBase *expr; .)
 ProcDecl<ProcDeclAst* &procDecl>		(. VarDeclAst *varDecl; int type; AstBase *stat; DeclVec declVec; .)
 = 
 	"function"							(. procDecl = new ProcDeclAst(); .)
-	ReturnType<type>						(. procDecl->SetReturnType( type ); .)
-	ident									(. procDecl->SetName( t->val ); .)
+	ReturnType<type>					(. procDecl->SetReturnType( type ); .)
+	ident								(. procDecl->SetName( t->val ); .)
 	[
-		'<'
-		ident
-		ident
+		'<'								
+		ident							(. procDecl->SetTyped( t->val ); .)
+		ident							(. procDecl->SetTypedVar( t->val ); .)
 		'>'
 	]
 	'('
@@ -335,17 +335,17 @@ Stat<AstBase *&stat>			(. VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *su
 	|
 	(
 		IF(IsFunction())
-		ident						(. std::wstring funcName = t->val; .)
+		ident						(. std::wstring funcName = t->val; std::wstring typed; .)
 		[
 			'<'
-			ident
+			ident					(. typed = t->val; .)
 			'>'
 		]
 		'('							(. AstVec exprVec; .)
 			[
 				ExprList<exprVec>
 			]
-		')'						(. stat = new CallAst( funcName.c_str(), exprVec ); .)
+		')'							(. stat = new CallAst( funcName.c_str(), typed. c_str(), exprVec ); .)
 		';'
 	)
 	|
