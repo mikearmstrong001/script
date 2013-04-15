@@ -137,7 +137,6 @@ int // operators
 	void Expr(AstBase* &expr);
 	void SimExpr(AstBase* &expr);
 	void RelOp(int &op);
-	void ObjectMemberList(IdentVec &vec);
 	void Factor(AstBase* &factor);
 	void ExprList(AstVec &vec);
 	void Declaration(DeclInfo &decl);

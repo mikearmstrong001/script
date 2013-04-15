@@ -274,7 +274,7 @@ void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pa
 void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
 	frame.StartFunction(m_declaration.size());
-	printf( "%S:\n", m_name.c_str() );
+	printf( "%S: %d\n", m_name.c_str(), Hash( m_name.c_str() ) );
 
 	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, USERPTR };
 	for (unsigned int i=0; i<m_declaration.size(); i++)

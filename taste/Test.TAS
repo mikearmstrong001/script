@@ -29,9 +29,12 @@ package Test {
 	
 	function void Main()
 	{
+		var float f;
+		f = testret();
+
 		var t2 p;
 
-		p.c = testret<p>();
+		//p.c = testret2<p>();
 		p.t.a = 2;
 
 		items3.a = 1;
@@ -41,22 +44,21 @@ package Test {
 		str = "blah";
 
 		var string[] strarray;
-		pushback<strarray>( str );
+		//pushback<strarray>( str );
 
 		var int c;
-		var float f;
-		f = testret();
 		f = cfunc( 10 );
 		var int i;
 		i = 200;
 		while ( i > 0 )
 		{
 			var int numitems;
-			numitems = 0;
+			numitems = 1;
 			var int j;
 			j=0;
 			while ( j < numitems )
 			{
+				printffloat( f );
 				j = j+1;
 			}
 			i = i - 1;

@@ -210,7 +210,7 @@ void Parser::Factor(AstBase* &factor) {
 		case _ident: {
 			if (IsFunction()) {
 				Expect(_ident);
-				std::wstring funcName; AstVec exprVec; 
+				std::wstring funcName = t->val; AstVec exprVec; 
 				if (la->kind == 19 /* "<" */) {
 					Get();
 					Expect(_ident);

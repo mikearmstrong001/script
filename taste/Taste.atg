@@ -144,7 +144,7 @@ Factor<AstBase* &factor>			(. AstBase *other_factor; .)
 =                        
 	(
 		IF(IsFunction())
-		ident						(. std::wstring funcName; AstVec exprVec; .)
+		ident						(. std::wstring funcName = t->val; AstVec exprVec; .)
 				[
 					'<'
 					ident
