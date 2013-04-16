@@ -199,9 +199,18 @@ void IdentAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pack
 			if ( index == 0x7fffffff )
 			{
 				VarDeclAst *var = pkg->FindVar( m_name.c_str() );
-				assert( var );
-				lookup[0] = Hash( m_name.c_str() );
-				AddOp( oplist, OPC_PUSHITEMG, lookup );
+				InterfaceDecl *iface = pkg->FindInterface( m_name.c_str() );
+				assert( var || iface );
+				if ( var )
+				{
+					lookup[0] = Hash( m_name.c_str() );
+					AddOp( oplist, OPC_PUSHITEMG, lookup );
+				}
+				else
+				if ( iface )
+				{
+					AddOp( oplist, OPC_PUSHI, Hash( m_name.c_str() ) );
+				}
 			}
 			else
 			{
@@ -604,6 +613,30 @@ StructDecl *Package::FindStruct( int name )
 	return NULL;
 }
 
+InterfaceDecl *Package::FindInterface( const wchar_t *name )
+{
+	for (unsigned int i=0; i<m_interfaces.size(); i++)
+	{
+		if ( m_interfaces[i]->GetName() == name )
+		{
+			return m_interfaces[i];
+		}
+	}
+	return NULL;
+}
+
+InterfaceDecl *Package::FindInterface( int name )
+{
+	for (unsigned int i=0; i<m_interfaces.size(); i++)
+	{
+		if ( Hash(m_interfaces[i]->GetName().c_str()) == name )
+		{
+			return m_interfaces[i];
+		}
+	}
+	return NULL;
+}
+
 VarDeclAst *Package::FindVar( const wchar_t *name )
 {
 	for (unsigned int i=0; i<m_varDecls.size(); i++)
@@ -644,6 +677,14 @@ ProcDeclAst *Package::FindProc( int name )
 	return NULL;
 }
 
+void InterfaceDecl::Register( vmstate &state )
+{
+	vminterface &iface = state.ifaces[ Hash(m_name.c_str()) ];
+	for (unsigned int i=0; i<m_procs.size(); i++)
+	{
+		iface.interfaceFunctions.push_back( Hash( m_procs[i]->GetName().c_str() ) );
+	}
+}
 
 void Package::Generate()
 {
@@ -657,6 +698,10 @@ void Package::Generate()
 		m_structs[i]->GenerateProps( this, state );
 	}
 
+	for ( unsigned int i=0; i<m_interfaces.size(); i++)
+	{
+		m_interfaces[i]->Register( state );
+	}
 
 	std::vector<int> oplist;
 	for ( unsigned int i=0; i<m_varDecls.size(); i++)

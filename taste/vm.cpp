@@ -243,6 +243,37 @@ bool testcfunc( vmstate &state )
 	return true;
 }
 
+bool implements( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -2 );
+	int arg1 = state.GetArgAsInt( -1 );
+	int typehash = (arg0.type == STRUCT) ? arg0.s->m_type : arg0.type;
+	vminterface &iface = state.ifaces[ arg1 ];
+	Map<int>::ConstIterator f = iface.typeCache.cfind( typehash );
+	int found = 1;
+	if ( !f )
+	{
+		for ( int i=0; i<iface.interfaceFunctions.size(); i++)
+		{
+			Map<var>::ConstIterator it = state.globals.cfind( iface.interfaceFunctions[i]^typehash );
+			if ( !it )
+			{
+				found = 0;
+				break;
+			}
+		}
+		iface.typeCache[typehash] = found;
+	}
+	else
+	{
+		found = *f.second;
+	}
+	state.rv.type = INTEGER;
+	state.rv.i = found;
+	state.stack.pop(2);
+	return true;
+}
+
 bool printffloat( vmstate &state )
 {
 	float f = state.GetArgAsFloat( -1 );
@@ -262,6 +293,7 @@ static functionreg_s globalFuncs[] =
 {
 	{ Hash(L"cfunc"), testcfunc },
 	{ Hash(L"printffloat"), printffloat },
+	{ Hash(L"implements"), implements },
 	{ Hash(L"pushback")^INTEGERARRAY, pushbackInteger },
 	{ Hash(L"pushback")^FLOATINGPOINTARRAY, pushbackFloatingPoint },
 	{ Hash(L"pushback")^USERPTRARRAY, pushbackUserPtr },

@@ -5,6 +5,11 @@ package Test {
 	var t1 items3;
 	//var t1[] items4;
 
+	interface hasPrint
+	{
+		function float testret2();
+	};
+
 	struct t1
 	{
 		var int a;
@@ -45,6 +50,9 @@ package Test {
 		var float f;
 		f = testret();
 
+		if ( implements( p, hasPrint ) )
+		{
+		}
 
 		p.c = testret2<p>();
 		p.c = testret2<items3>();
@@ -58,7 +66,7 @@ package Test {
 		str = "blah";
 
 		var string[] strarray;
-		//pushback<strarray>( str );
+		pushback<strarray>( str );
 
 		var int c;
 		f = cfunc( 10 );
@@ -72,7 +80,10 @@ package Test {
 			j=0;
 			while ( j < numitems )
 			{
-				printffloat( f );
+				if ( implements( p, hasPrint ) )
+				{
+					printffloat( f );
+				}
 				j = j+1;
 			}
 			i = i - 1;

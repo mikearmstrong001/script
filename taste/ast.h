@@ -448,6 +448,8 @@ public:
 	std::wstring const &GetExtends() { return m_extends; }
 
 	std::vector< ProcDefDeclAst* > const &GetProcs() { return m_procs; }
+
+	void Register( vmstate &state );
 };
 
 class Package
@@ -464,6 +466,8 @@ public:
 
 	StructDecl *FindStruct( const wchar_t *name );
 	StructDecl *FindStruct( int name );
+	InterfaceDecl *FindInterface( const wchar_t *name );
+	InterfaceDecl *FindInterface( int name );
 	VarDeclAst *FindVar( const wchar_t *name );
 	VarDeclAst *FindVar( int name );
 	ProcDeclAst *FindProc( const wchar_t *name );
