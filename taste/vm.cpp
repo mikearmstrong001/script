@@ -26,7 +26,6 @@ const char *opnames[] =
 	"OPC_RET",
 	"OPC_CALL",
 	"OPC_CALLTYPED",
-	"OPC_CALLTYPEDG",
 	"OPC_JF",
 	"OPC_JMP",
 	"OPC_POP",
@@ -47,8 +46,8 @@ const char *opnames[] =
 
 static bool pushbackFloatingPoint( vmstate &state )
 {
-	const var &arg0 = state.GetArg( -2 );
-	const var &arg1 = state.GetArg( -1 );
+	const var &arg1 = state.GetArg( -2 );
+	const var &arg0 = state.GetArg( -1 );
 	state.stack.pop( 2 );
 
 	CEXCEPTION_ERROR_CONDITION( arg0.type == FLOATINGPOINTARRAY && arg1.type == FLOATINGPOINT, "Expecting FloatingPoint in builtin array pushback" );
@@ -60,8 +59,8 @@ static bool pushbackFloatingPoint( vmstate &state )
 
 static bool pushbackInteger( vmstate &state )
 {
-	const var &arg0 = state.GetArg( -2 );
-	const var &arg1 = state.GetArg( -1 );
+	const var &arg1 = state.GetArg( -2 );
+	const var &arg0 = state.GetArg( -1 );
 	state.stack.pop( 2 );
 
 	CEXCEPTION_ERROR_CONDITION( arg0.type == INTEGERARRAY && arg1.type == INTEGER, "Expecting Integer in builtin array pushback" );
@@ -73,8 +72,8 @@ static bool pushbackInteger( vmstate &state )
 
 static bool pushbackUserPtr( vmstate &state )
 {
-	const var &arg0 = state.GetArg( -2 );
-	const var &arg1 = state.GetArg( -1 );
+	const var &arg1 = state.GetArg( -2 );
+	const var &arg0 = state.GetArg( -1 );
 	state.stack.pop( 2 );
 
 	CEXCEPTION_ERROR_CONDITION( arg0.type == USERPTRARRAY && arg1.type == USERPTR, "Expecting userptr in builtin array pushback" );
@@ -86,13 +85,26 @@ static bool pushbackUserPtr( vmstate &state )
 
 static bool pushbackString( vmstate &state )
 {
-	const var &arg0 = state.GetArg( -2 );
-	const var &arg1 = state.GetArg( -1 );
+	const var &arg1 = state.GetArg( -2 );
+	const var &arg0 = state.GetArg( -1 );
 	state.stack.pop( 2 );
 
 	CEXCEPTION_ERROR_CONDITION( arg0.type == STRINGARRAY && arg1.type == STRING, "Expecting string in builtin array pushback" );
 
 	arg0.strArrayPtr->m_items.push_back( arg1.str );
+
+	return false;
+}
+
+static bool pushbackStruct( vmstate &state )
+{
+	const var &arg1 = state.GetArg( -2 );
+	const var &arg0 = state.GetArg( -1 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == STRUCTARRAY && arg1.type == STRUCT, "Expecting struct in builtin array pushback" );
+
+	arg0.sArrayPtr->m_items.push_back( arg1.s );
 
 	return false;
 }
@@ -145,10 +157,22 @@ static bool sizeString( vmstate &state )
 	return true;
 }
 
+static bool sizeStruct( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -1 );
+	state.stack.pop( 1 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == STRUCTARRAY, "Expecting Struct in builtin array size" );
+
+	state.SetReturn( arg0.sArrayPtr->m_items.size() );
+
+	return true;
+}
+
 static bool resizeFloatingPoint( vmstate &state )
 {
-	const var &arg0 = state.GetArg( -2 );
-	int arg1 = state.GetArgAsInt( -1 );
+	const var &arg0 = state.GetArg( -1 );
+	int arg1 = state.GetArgAsInt( -2 );
 	state.stack.pop( 2 );
 
 	CEXCEPTION_ERROR_CONDITION( arg0.type == FLOATINGPOINTARRAY, "Expecting Integer in builtin array size" );
@@ -160,8 +184,8 @@ static bool resizeFloatingPoint( vmstate &state )
 
 static bool resizeInteger( vmstate &state )
 {
-	const var &arg0 = state.GetArg( -2 );
-	int arg1 = state.GetArgAsInt( -1 );
+	const var &arg0 = state.GetArg( -1 );
+	int arg1 = state.GetArgAsInt( -2 );
 	state.stack.pop( 2 );
 
 	CEXCEPTION_ERROR_CONDITION( arg0.type == INTEGERARRAY, "Expecting Integer in builtin array size" );
@@ -173,8 +197,8 @@ static bool resizeInteger( vmstate &state )
 
 static bool resizeUserPtr( vmstate &state )
 {
-	const var &arg0 = state.GetArg( -2 );
-	int arg1 = state.GetArgAsInt( -1 );
+	const var &arg0 = state.GetArg( -1 );
+	int arg1 = state.GetArgAsInt( -2 );
 	state.stack.pop( 2 );
 
 	CEXCEPTION_ERROR_CONDITION( arg0.type == USERPTRARRAY, "Expecting Integer in builtin array size" );
@@ -186,13 +210,26 @@ static bool resizeUserPtr( vmstate &state )
 
 static bool resizeString( vmstate &state )
 {
-	const var &arg0 = state.GetArg( -2 );
-	int arg1 = state.GetArgAsInt( -1 );
+	const var &arg0 = state.GetArg( -1 );
+	int arg1 = state.GetArgAsInt( -2 );
 	state.stack.pop( 2 );
 
 	CEXCEPTION_ERROR_CONDITION( arg0.type == STRINGARRAY, "Expecting String in builtin array size" );
 
 	arg0.strArrayPtr->m_items.resize( arg1 );
+
+	return false;
+}
+
+static bool resizeStruct( vmstate &state )
+{
+	const var &arg0 = state.GetArg( -1 );
+	int arg1 = state.GetArgAsInt( -2 );
+	state.stack.pop( 2 );
+
+	CEXCEPTION_ERROR_CONDITION( arg0.type == STRUCTARRAY, "Expecting Struct in builtin array size" );
+
+	arg0.sArrayPtr->m_items.resize( arg1 );
 
 	return false;
 }
@@ -229,6 +266,7 @@ static functionreg_s globalFuncs[] =
 	{ Hash(L"pushback")^FLOATINGPOINTARRAY, pushbackFloatingPoint },
 	{ Hash(L"pushback")^USERPTRARRAY, pushbackUserPtr },
 	{ Hash(L"pushback")^STRINGARRAY, pushbackString },
+	{ Hash(L"pushback")^STRUCTARRAY, pushbackStruct },
 	{ Hash(L"size")^INTEGERARRAY, sizeInteger },
 	{ Hash(L"size")^FLOATINGPOINTARRAY, sizeFloatingPoint },
 	{ Hash(L"size")^USERPTRARRAY, sizeUserPtr },
@@ -330,6 +368,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					item.strArrayPtr = new vmarrayvar<vmstring*>;
 				}
 				else
+				if ( type == STRUCTARRAY )
+				{
+					item.sArrayPtr = new vmarrayvar<vmstruct*>;
+				}
+				else
 				{
 					item.i = 0;
 				}
@@ -360,6 +403,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( type == STRINGARRAY )
 				{
 					item.strArrayPtr = new vmarrayvar<vmstring*>;
+				}
+				else
+				if ( type == STRUCTARRAY )
+				{
+					item.sArrayPtr = new vmarrayvar<vmstruct*>;
 				}
 				else
 				{
@@ -796,6 +844,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					v.strArrayPtr->m_items[index] = v0.str;
 				}
 				else
+				if ( v.type == STRUCTARRAY && v0.type == STRUCT )
+				{
+					v.sArrayPtr->m_items[index] = v0.s;
+				}
+				else
 				{
 					CEXCEPTION_ERROR( "err" );
 				}
@@ -826,6 +879,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				if ( v.type == STRINGARRAY && v0.type == STRING )
 				{
 					v.strArrayPtr->m_items[index] = v0.str;
+				}
+				else
+				if ( v.type == STRUCTARRAY && v0.type == STRUCT )
+				{
+					v.sArrayPtr->m_items[index] = v0.s;
 				}
 				else
 				{
@@ -867,6 +925,13 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					v0.str = v.strArrayPtr->m_items[index];
 				}
 				else
+				if ( v.type == STRUCTARRAY )
+				{
+					var &v0 = state.stack.push();
+					v0.type = STRUCT;
+					v0.s = v.sArrayPtr->m_items[index];
+				}
+				else
 				{
 					CEXCEPTION_ERROR( "err" );
 				}
@@ -904,6 +969,13 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					var &v0 = state.stack.push();
 					v0.type = STRING;
 					v0.str = v.strArrayPtr->m_items[index];
+				}
+				else
+				if ( v.type == STRUCTARRAY )
+				{
+					var &v0 = state.stack.push();
+					v0.type = STRUCT;
+					v0.s = v.sArrayPtr->m_items[index];
 				}
 				else
 				{
@@ -957,6 +1029,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 						curitem.strArrayPtr = new vmarrayvar<vmstring*>;
 					}
 					else
+					if ( curitem.type == STRUCTARRAY )
+					{
+						curitem.sArrayPtr = new vmarrayvar<vmstruct*>;
+					}
+					else
 					{
 						curitem.i = 0;
 					}
@@ -996,6 +1073,11 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 					if ( curitem.type == STRINGARRAY )
 					{
 						curitem.strArrayPtr = new vmarrayvar<vmstring*>;
+					}
+					else
+					if ( curitem.type == STRUCTARRAY )
+					{
+						curitem.sArrayPtr = new vmarrayvar<vmstruct*>;
 					}
 					else
 					{

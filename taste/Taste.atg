@@ -72,6 +72,7 @@ Type<int &type>
  | "float"						(. type = FLOATINGPOINT; .)
  | "userptr"					(. type = USERPTR; .)
  | "string"						(. type = STRING; .)
+ | "struct"						(. type = STRUCT; .)
  | ident						(. type = Hash( t->val ); .)
  ).
 

@@ -101,7 +101,7 @@ int // operators
 		Token *next0 = scanner->Peek();
 		if ( next0->val[0] == '<' )
 		{
-			int count = 20
+			int count = 20;
 			while ( next0 && next0->val[0] != '>' && next0->val[0] && count--)
 				next0 = scanner->Peek();
 			if ( next0 == NULL )

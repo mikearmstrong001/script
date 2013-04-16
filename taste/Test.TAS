@@ -33,14 +33,23 @@ package Test {
 	
 	function void Main()
 	{
+		var t2 p;
+		var t1 q;
+		var struct[] structarray;
+		pushback<structarray>( p );
+		pushback<structarray>( q );
+
+		p.c = testret2<structarray[0]>();
+		p.c = testret2<structarray[1]>();
+
 		var float f;
 		f = testret();
 
-		var t2 p;
 
 		p.c = testret2<p>();
 		p.c = testret2<items3>();
 		p.t.a = 2;
+
 
 		items3.a = 1;
 		items3.b = items3.a;

@@ -297,6 +297,7 @@ struct vmarrayvar
 	GrowingArray<T> m_items;
 };
 
+struct vmstruct;
 
 struct var
 {
@@ -307,11 +308,12 @@ struct var
 		float f;
 		void *u;
 		vmstring *str;
-		struct vmstruct *s;
+		vmstruct *s;
 		vmarrayvar<int> *iArrayPtr;
 		vmarrayvar<float> *fArrayPtr;
 		vmarrayvar<void*> *uArrayPtr;
 		vmarrayvar<vmstring*> *strArrayPtr;
+		vmarrayvar<vmstruct*> *sArrayPtr;
 		bool (*cfunc)( struct vmstate &state );
 	};
 };
