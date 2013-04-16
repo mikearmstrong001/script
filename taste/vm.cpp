@@ -404,43 +404,10 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			break;
 		case OPC_CALLTYPED:
 			{
+				const var &valtyped = state.stack.top();
 				int index = ops[pc++];
-				int typed = ops[pc++];
-				const var &valtyped = state.stack[state.envStack.top()+typed];
 				int typehash = (valtyped.type == STRUCT) ? valtyped.s->m_type : valtyped.type;
 				const var &val = state.globals[index^typehash];
-				state.stack.push( valtyped );
-				if ( val.type == CFUNCTION )
-				{
-					state.envStack.push( state.stack.size() );
-					bool res = val.cfunc( state );
-					// cfunc should clear the stack based on args
-					state.envStack.pop();
-					if ( res )
-					{
-						state.stack.push( state.rv );
-					}
-				}
-				else
-				if ( val.type == VMFUNCTION )
-				{
-					state.pcStack.push( pc );
-					pc = val.i;
-				}
-				else
-				{
-					CEXCEPTION_ERROR("bad type");
-				}
-			}
-			break;
-		case OPC_CALLTYPEDG:
-			{
-				int index = ops[pc++];
-				int typed = ops[pc++];
-				const var &valtyped = state.globals[typed];
-				int typehash = (valtyped.type == STRUCT) ? valtyped.s->m_type : valtyped.type;
-				const var &val = state.globals[index^typehash];
-				state.stack.push( valtyped );
 				if ( val.type == CFUNCTION )
 				{
 					state.envStack.push( state.stack.size() );

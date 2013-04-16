@@ -32,6 +32,7 @@ Coco/R itself) does not fall under the GNU General Public License.
 
 #include "ast.h"
 #include "wchar.h"
+#include "vm.h"
 
 
 #include "Scanner.h"
@@ -84,12 +85,6 @@ public:
 int // operators
 	  plus, minus, times, slash, equ, lss, gtr;
 
-	int // types
-	  undef, integer, boolean, floatingpoint, voidtype, userptr, stringtype;
-
-	int // object kinds
-	  var, proc;
-	
 	Package		  *package;
 
 	void Err(wchar_t* msg) {
@@ -98,8 +93,6 @@ int // operators
 
 	void InitDeclarations() { // it must exist
 		plus = 0; minus = 1; times = 2; slash = 3; equ = 4; lss = 5; gtr = 6; // operators
-		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; voidtype = 4; userptr = 5; stringtype=6; // types
-		var = 0; proc = 1; // object kinds
 		package = NULL;
 	}
 
@@ -108,9 +101,10 @@ int // operators
 		Token *next0 = scanner->Peek();
 		if ( next0->val[0] == '<' )
 		{
-			Token *next1 = scanner->Peek();
-			Token *next2 = scanner->Peek();
-			if ( next2->val[0] != '>' )
+			int count = 20
+			while ( next0 && next0->val[0] != '>' && next0->val[0] && count--)
+				next0 = scanner->Peek();
+			if ( next0 == NULL )
 				return false;
 			Token *next3 = scanner->Peek();
 			return next3->val[0] == '(';

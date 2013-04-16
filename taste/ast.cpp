@@ -255,29 +255,25 @@ void VarDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Pa
 	}
 	else
 	{
-		VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, VOID, USERPTR, STRING							};
-		VARTYPE typemaparray[] = { INTEGERARRAY, INTEGERARRAY, INTEGERARRAY, FLOATINGPOINTARRAY, INTEGERARRAY, USERPTRARRAY, STRINGARRAY
-							};
 		assert( m_type >= 0 && m_type < MAX_VARTYPE );
 		if ( frame.GetDepth() == 1 )
 		{
-			AddOp( oplist, OPC_MAKEVARG, m_isarray ? typemaparray[m_type] : typemap[m_type], Hash( m_name.c_str() ), 0 );
+			AddOp( oplist, OPC_MAKEVARG, m_isarray ? VARTYPETOARRAY(m_type) : m_type, Hash( m_name.c_str() ), 0 );
 		}
 		else
 		{
-			int index = frame.AddEntry( m_name, m_isarray ? typemaparray[m_type] : typemap[m_type] );
-			AddOp( oplist, OPC_MAKEVAR, m_isarray ? typemaparray[m_type] : typemap[m_type], index, 0 );
+			int index = frame.AddEntry( m_name, m_isarray ? VARTYPETOARRAY(m_type) : (VARTYPE)m_type );
+			AddOp( oplist, OPC_MAKEVAR, m_isarray ? VARTYPETOARRAY(m_type) : m_type, index, 0 );
 		}
 	}
 }
 
 void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg )
 {
-	frame.StartFunction(m_declaration.size()+ (!m_typed.empty() ? 1 : 0));
-	printf( "%S<%S>: %d\n", m_name.c_str(), m_typed.c_str(), Hash( m_name.c_str() ) );
+	frame.StartFunction(m_declaration.size()+ (!m_typedVar.empty() ? 1 : 0));
+	printf( "%S<%d>: %d\n", m_name.c_str(), m_typed, Hash( m_name.c_str() ) );
 
 
-	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, USERPTR };
 	for (unsigned int i=0; i<m_declaration.size(); i++)
 	{
 		if ( (unsigned int)m_declaration[i].type >= MAX_VARTYPE )
@@ -286,12 +282,12 @@ void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class P
 		}
 		else
 		{
-			frame.AddEntry( m_declaration[i].name, typemap[m_declaration[i].type] );
+			frame.AddEntry( m_declaration[i].name, (VARTYPE)m_declaration[i].type );
 		}
 	}
-	if ( !m_typed.empty() )
+	if ( !m_typedVar.empty() )
 	{
-		frame.AddEntry( m_typedVar.c_str(), STRUCT, Hash( m_typed.c_str() ) );
+		frame.AddEntry( m_typedVar.c_str(), m_typed >= MAX_VARTYPE ? STRUCT : (VARTYPE)m_typed, m_typed );
 	}
 	int patch0 = AddOp( oplist, OPC_PUSHENV, 0 );
 	int startProcFrame = frame.PushFrame();
@@ -303,7 +299,7 @@ void ProcDeclAst::Generate( std::vector<int> &oplist, StackFrame &frame, class P
 	AddOp( oplist, OPC_POPENV );
 	oplist[patch0+1] = sizeProcFrame;
 
-	AddOp( oplist, OPC_POP, (int)m_declaration.size() + (!m_typed.empty() ? 1 : 0));
+	AddOp( oplist, OPC_POP, (int)m_declaration.size() + (!m_typedVar.empty() ? 1 : 0));
 	AddOp( oplist, OPC_RET );
 	frame.EndFunction();
 }
@@ -416,18 +412,10 @@ void CallAst::Generate( std::vector<int> &oplist, StackFrame &frame, class Packa
 	std::vector<int> lookup;
 	lookup.push_back( Hash( m_name.c_str() ) );
 
-	if ( !m_typed.empty() )
+	if ( m_typed )
 	{
-		StackEntry e;
-		int index = frame.FindEntry( e, m_typed );
-		if ( index == 0x7fffffff )
-		{
-			AddOp( oplist, OPC_CALLTYPEDG, Hash( m_name.c_str() ), Hash( m_typed.c_str() ) );
-		}
-		else
-		{
-			AddOp( oplist, OPC_CALLTYPED, Hash( m_name.c_str() ), index );
-		}
+		m_typed->Generate( oplist, frame, pkg );
+		AddOp( oplist, OPC_CALLTYPED, Hash( m_name.c_str() ) );
 	}
 	else
 	{
@@ -581,15 +569,13 @@ void StructDecl::GenerateProps( class Package *pkg, vmstate &state )
 			m_flattenedProps.push_back( e );
 		}
 	}
-	VARTYPE typemap[] = { INTEGER, INTEGER, INTEGER, FLOATINGPOINT, VOID, USERPTR, STRING
-						};
 	vmstructprops *vmstruct = new vmstructprops;
 	state.structProps[Hash( m_name.c_str() )] = vmstruct;
 	for (unsigned int i=0; i<m_flattenedProps.size(); i++)
 	{
 		vmelement vme;
 		vme.itemName = m_flattenedProps[i].hashName;
-		vme.itemType = typemap[m_flattenedProps[i].varInfo->GetType()];
+		vme.itemType = m_flattenedProps[i].varInfo->GetType();
 		vmstruct->properties.push_back( vme );
 	}
 }
@@ -685,9 +671,9 @@ void Package::Generate()
 		if ( m_procs[i]->GetName() == L"Main" )
 			main = oplist.size();
 		int hash = Hash( m_procs[i]->GetName().c_str() );
-		if ( !m_procs[i]->GetTyped().empty() )
+		if ( !m_procs[i]->GetTypedVar().empty() )
 		{
-			hash ^= Hash( m_procs[i]->GetTyped().c_str() );
+			hash ^= m_procs[i]->GetTyped();
 		}
 		state.globals[hash].type = VMFUNCTION;
 		state.globals[hash].i = oplist.size();

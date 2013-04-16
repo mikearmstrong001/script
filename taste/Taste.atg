@@ -1,17 +1,12 @@
 #include "ast.h"
 #include "wchar.h"
+#include "vm.h"
 
 COMPILER Taste
 
 	int // operators
 	  plus, minus, times, slash, equ, lss, gtr;
 
-	int // types
-	  undef, integer, boolean, floatingpoint, voidtype, userptr, stringtype;
-
-	int // object kinds
-	  var, proc;
-	
 	Package		  *package;
 
 	void Err(wchar_t* msg) {
@@ -20,8 +15,6 @@ COMPILER Taste
 
 	void InitDeclarations() { // it must exist
 		plus = 0; minus = 1; times = 2; slash = 3; equ = 4; lss = 5; gtr = 6; // operators
-		undef = 0; boolean = 1; integer = 2; floatingpoint = 3; voidtype = 4; userptr = 5; stringtype=6; // types
-		var = 0; proc = 1; // object kinds
 		package = NULL;
 	}
 
@@ -30,9 +23,10 @@ COMPILER Taste
 		Token *next0 = scanner->Peek();
 		if ( next0->val[0] == '<' )
 		{
-			Token *next1 = scanner->Peek();
-			Token *next2 = scanner->Peek();
-			if ( next2->val[0] != '>' )
+			int count = 20;
+			while ( next0 && next0->val[0] != '>' && next0->val[0] && count--)
+				next0 = scanner->Peek();
+			if ( next0 == NULL )
 				return false;
 			Token *next3 = scanner->Peek();
 			return next3->val[0] == '(';
@@ -74,18 +68,17 @@ PRODUCTIONS
 
 Type<int &type>
 =
- ( "int"						(. type = integer; .)
- | "bool"						(. type = boolean; .)
- | "float"						(. type = floatingpoint; .)
- | "userptr"					(. type = userptr; .)
- | "string"						(. type = stringtype; .)
+ ( "int"						(. type = INTEGER; .)
+ | "float"						(. type = FLOATINGPOINT; .)
+ | "userptr"					(. type = USERPTR; .)
+ | "string"						(. type = STRING; .)
  | ident						(. type = Hash( t->val ); .)
  ).
 
 /*------------------------------------------------------------------------*/
 ReturnType<int &type>
 = 
-	"void"			(. type = voidtype; .)
+	"void"						(. type = VOID; .)
 	| Type<type>
   .
 
@@ -144,17 +137,17 @@ Factor<AstBase* &factor>			(. AstBase *other_factor; .)
 =                        
 	(
 		IF(IsFunction())
-		ident						(. std::wstring funcName = t->val; std::wstring typed; AstVec exprVec; .)
+		ident						(. std::wstring funcName = t->val; AstBase* typed = NULL; AstVec exprVec; .)
 				[
 					'<'
-					ident			(. typed = t->val; .)
+					Factor<typed>
 					'>'
 				]
 				"("
 					[ 
 						ExprList<exprVec>	
 					]
-				")"					(. factor = new CallAst( funcName.c_str(), typed.c_str(), exprVec ); .)
+				")"					(. factor = new CallAst( funcName.c_str(), typed, exprVec ); .)
 		|
 		(
 			ident						(. IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstBase *expr; .)
@@ -232,7 +225,7 @@ ProcDecl<ProcDeclAst* &procDecl>		(. VarDeclAst *varDecl; int type; AstBase *sta
 	ident								(. procDecl->SetName( t->val ); .)
 	[
 		'<'								
-		ident							(. procDecl->SetTyped( t->val ); .)
+		Type<type>						(. procDecl->SetTyped( type ); .)
 		ident							(. procDecl->SetTypedVar( t->val ); .)
 		'>'
 	]
@@ -335,17 +328,17 @@ Stat<AstBase *&stat>			(. VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *su
 	|
 	(
 		IF(IsFunction())
-		ident						(. std::wstring funcName = t->val; std::wstring typed; .)
+		ident						(. std::wstring funcName = t->val; AstBase *typed = NULL; .)
 		[
 			'<'
-			ident					(. typed = t->val; .)
+			Factor<typed>
 			'>'
 		]
 		'('							(. AstVec exprVec; .)
 			[
 				ExprList<exprVec>
 			]
-		')'							(. stat = new CallAst( funcName.c_str(), typed. c_str(), exprVec ); .)
+		')'							(. stat = new CallAst( funcName.c_str(), typed, exprVec ); .)
 		';'
 	)
 	|

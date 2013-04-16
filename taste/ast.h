@@ -270,21 +270,23 @@ class ProcDeclAst : public AstBase
 {
 	int m_returnType;
 	std::wstring m_name;
+	int m_typed;
+	std::wstring m_typedVar;
 	std::vector< AstBase* > m_body;
 	DeclVec m_declaration;
-	std::wstring m_typed;
-	std::wstring m_typedVar;
 public:
+
+	ProcDeclAst() : m_returnType(0), m_typed(0) {}
 
 	void SetReturnType( int type ) { m_returnType = type; }
 	void SetName( const wchar_t *name ) { m_name = name; }
 	void SetDeclaration( const DeclVec &v ) { m_declaration = v; }
 	void AddBody( AstBase *e ) { m_body.push_back( e ); }
 
-	void SetTyped( const wchar_t *name ) { m_typed = name; }
+	void SetTyped( int name ) { m_typed = name; }
 	void SetTypedVar( const wchar_t *name ) { m_typedVar = name; }
 
-	std::wstring const &GetTyped() { return m_typed; }
+	int GetTyped() const { return m_typed; }
 	std::wstring const &GetTypedVar() { return m_typedVar; }
 
 	std::wstring const &GetName() { return m_name; }
@@ -311,10 +313,10 @@ class CallAst : public AstBase
 {
 	AstVec m_callExpr;
 	std::wstring m_name;
-	std::wstring m_typed;
+	AstBase *m_typed;
 public:
 
-	CallAst( const wchar_t *token, const wchar_t *typed, AstVec &expr ) : m_name(token), m_typed(typed), m_callExpr(expr) {}
+	CallAst( const wchar_t *token, AstBase *typed, AstVec &expr ) : m_name(token), m_typed(typed), m_callExpr(expr) {}
 
 	virtual void Generate( std::vector<int> &oplist, StackFrame &frame, class Package *pkg );
 };

@@ -90,90 +90,73 @@ bool Parser::WeakSeparator(int n, int syFol, int repFol) {
 }
 
 void Parser::Type(int &type) {
-		switch (la->kind) {
-		case 5 /* "int" */: {
+		if (la->kind == 5 /* "int" */) {
 			Get();
-			type = integer; 
-			break;
-		}
-		case 6 /* "bool" */: {
+			type = INTEGER; 
+		} else if (la->kind == 6 /* "float" */) {
 			Get();
-			type = boolean; 
-			break;
-		}
-		case 7 /* "float" */: {
+			type = FLOATINGPOINT; 
+		} else if (la->kind == 7 /* "userptr" */) {
 			Get();
-			type = floatingpoint; 
-			break;
-		}
-		case 8 /* "userptr" */: {
+			type = USERPTR; 
+		} else if (la->kind == 8 /* "string" */) {
 			Get();
-			type = userptr; 
-			break;
-		}
-		case 9 /* "string" */: {
-			Get();
-			type = stringtype; 
-			break;
-		}
-		case _ident: {
+			type = STRING; 
+		} else if (la->kind == _ident) {
 			Get();
 			type = Hash( t->val ); 
-			break;
-		}
-		default: SynErr(40); break;
-		}
+		} else SynErr(39);
 }
 
 void Parser::ReturnType(int &type) {
-		if (la->kind == 10 /* "void" */) {
+		if (la->kind == 9 /* "void" */) {
 			Get();
-			type = voidtype; 
+			type = VOID; 
 		} else if (StartOf(1)) {
 			Type(type);
-		} else SynErr(41);
+		} else SynErr(40);
 }
 
 void Parser::VarDecl(VarDeclAst* &varDecl) {
 		int type; varDecl = new VarDeclAst; 
-		Expect(11 /* "var" */);
+		Expect(10 /* "var" */);
 		Type(type);
 		varDecl->SetType(type); 
-		if (la->kind == 12 /* "[" */) {
+		if (la->kind == 11 /* "[" */) {
 			Get();
-			Expect(13 /* "]" */);
+			Expect(12 /* "]" */);
 			varDecl->SetIsArray(); 
 		}
 		Expect(_ident);
 		varDecl->SetName(t->val); 
-		Expect(14 /* ";" */);
+		Expect(13 /* ";" */);
 }
 
 void Parser::AddOp(int &op) {
-		if (la->kind == 15 /* "+" */) {
+		if (la->kind == 14 /* "+" */) {
 			Get();
 			op = plus; 
-		} else if (la->kind == 16 /* "-" */) {
+		} else if (la->kind == 15 /* "-" */) {
 			Get();
 			op = minus; 
-		} else SynErr(42);
+		} else SynErr(41);
 }
 
 void Parser::MulOp(int &op) {
-		if (la->kind == 17 /* "*" */) {
+		if (la->kind == 16 /* "*" */) {
 			Get();
 			op = times; 
-		} else if (la->kind == 18 /* "/" */) {
+		} else if (la->kind == 17 /* "/" */) {
 			Get();
 			op = slash; 
-		} else SynErr(43);
+		} else SynErr(42);
 }
 
 void Parser::Expr(AstBase* &expr) {
 		AstBase* other_expr; int op; 
 		SimExpr(other_expr);
 		expr = other_expr; 
-		if (la->kind == 19 /* "<" */ || la->kind == 20 /* ">" */ || la->kind == 30 /* "==" */) {
+		if (la->kind == 18 /* "<" */ || la->kind == 19 /* ">" */ || la->kind == 29 /* "==" */) {
 			RelOp(op);
 			SimExpr(other_expr);
 			expr = new BinaryAst( expr, op, other_expr ); 
@@ -184,7 +167,7 @@ void Parser::SimExpr(AstBase* &expr) {
 		int op; AstBase *term; 
 		Term(term);
 		expr = term; 
-		while (la->kind == 15 /* "+" */ || la->kind == 16 /* "-" */) {
+		while (la->kind == 14 /* "+" */ || la->kind == 15 /* "-" */) {
 			AddOp(op);
 			Term(term);
 			expr = new BinaryAst( expr, op, term ); 
@@ -192,16 +175,16 @@ void Parser::SimExpr(AstBase* &expr) {
 }
 
 void Parser::RelOp(int &op) {
-		if (la->kind == 30 /* "==" */) {
+		if (la->kind == 29 /* "==" */) {
 			Get();
 			op = equ; 
-		} else if (la->kind == 19 /* "<" */) {
+		} else if (la->kind == 18 /* "<" */) {
 			Get();
 			op = lss; 
-		} else if (la->kind == 20 /* ">" */) {
+		} else if (la->kind == 19 /* ">" */) {
 			Get();
 			op = gtr; 
-		} else SynErr(44);
+		} else SynErr(43);
 }
 
 void Parser::Factor(AstBase* &factor) {
@@ -210,29 +193,28 @@ void Parser::Factor(AstBase* &factor) {
 		case _ident: {
 			if (IsFunction()) {
 				Expect(_ident);
-				std::wstring funcName = t->val; std::wstring typed; AstVec exprVec; 
-				if (la->kind == 19 /* "<" */) {
+				std::wstring funcName = t->val; AstBase* typed = NULL; AstVec exprVec; 
+				if (la->kind == 18 /* "<" */) {
 					Get();
-					Expect(_ident);
-					typed = t->val; 
-					Expect(20 /* ">" */);
+					Factor(typed);
+					Expect(19 /* ">" */);
 				}
-				Expect(21 /* "(" */);
+				Expect(20 /* "(" */);
 				if (StartOf(2)) {
 					ExprList(exprVec);
 				}
-				Expect(22 /* ")" */);
-				factor = new CallAst( funcName.c_str(), typed.c_str(), exprVec ); 
+				Expect(21 /* ")" */);
+				factor = new CallAst( funcName.c_str(), typed, exprVec ); 
 			} else {
 				Get();
 				IdentAst *identFactor = new IdentAst( t->val ); factor = identFactor; IdentVec identVec; AstBase *expr; 
-				if (la->kind == 12 /* "[" */) {
+				if (la->kind == 11 /* "[" */) {
 					Get();
 					Expr(expr);
 					identFactor->SetArrayIndex( expr ); 
-					Expect(13 /* "]" */);
+					Expect(12 /* "]" */);
 				}
-				while (la->kind == 23 /* "." */) {
+				while (la->kind == 22 /* "." */) {
 					Get();
 					Expect(_ident);
 					identVec.push_back( t->val ); 
@@ -256,29 +238,29 @@ void Parser::Factor(AstBase* &factor) {
 			factor = new ConstStringAst( t->val ); 
 			break;
 		}
-		case 16 /* "-" */: {
+		case 15 /* "-" */: {
 			Get();
 			Factor(other_factor);
 			factor = new NegateAst( other_factor ); 
 			break;
 		}
-		case 24 /* "true" */: {
+		case 23 /* "true" */: {
 			Get();
 			factor = new ConstBooleanAst( true ); 
 			break;
 		}
-		case 25 /* "false" */: {
+		case 24 /* "false" */: {
 			Get();
 			factor = new ConstBooleanAst( false ); 
 			break;
 		}
-		case 21 /* "(" */: {
+		case 20 /* "(" */: {
 			Get();
 			Expr(factor);
-			Expect(22 /* ")" */);
+			Expect(21 /* ")" */);
 			break;
 		}
-		default: SynErr(45); break;
+		default: SynErr(44); break;
 		}
 }
 
@@ -286,7 +268,7 @@ void Parser::ExprList(AstVec &vec) {
 		AstBase *expr; 
 		Expr(expr);
 		vec.push_back( expr ); 
-		while (la->kind == 26 /* "," */) {
+		while (la->kind == 25 /* "," */) {
 			Get();
 			Expr(expr);
 			vec.push_back( expr ); 
@@ -303,7 +285,7 @@ void Parser::DeclarationList(DeclVec &vec) {
 		DeclInfo decl; 
 		Declaration(decl);
 		vec.push_back( decl ); 
-		while (la->kind == 26 /* "," */) {
+		while (la->kind == 25 /* "," */) {
 			Get();
 			Declaration(decl);
 			vec.push_back( decl ); 
@@ -312,27 +294,29 @@ void Parser::DeclarationList(DeclVec &vec) {
 
 void Parser::ProcDecl(ProcDeclAst* &procDecl) {
 		VarDeclAst *varDecl; int type; AstBase *stat; DeclVec declVec; 
-		Expect(27 /* "function" */);
+		Expect(26 /* "function" */);
 		procDecl = new ProcDeclAst(); 
 		ReturnType(type);
 		procDecl->SetReturnType( type ); 
 		Expect(_ident);
 		procDecl->SetName( t->val ); 
-		if (la->kind == 19 /* "<" */) {
+		if (la->kind == 18 /* "<" */) {
 			Get();
+			Type(type);
+			procDecl->SetTyped( type ); 
 			Expect(_ident);
-			Expect(_ident);
-			Expect(20 /* ">" */);
+			procDecl->SetTypedVar( t->val ); 
+			Expect(19 /* ">" */);
 		}
-		Expect(21 /* "(" */);
+		Expect(20 /* "(" */);
 		if (StartOf(1)) {
 			DeclarationList(declVec);
 		}
-		Expect(22 /* ")" */);
+		Expect(21 /* ")" */);
 		procDecl->SetDeclaration(declVec); 
-		Expect(28 /* "{" */);
+		Expect(27 /* "{" */);
 		while (StartOf(3)) {
-			if (la->kind == 11 /* "var" */) {
+			if (la->kind == 10 /* "var" */) {
 				VarDecl(varDecl);
 				procDecl->AddBody( varDecl ); 
 			} else {
@@ -340,18 +324,18 @@ void Parser::ProcDecl(ProcDeclAst* &procDecl) {
 				procDecl->AddBody( stat ); 
 			}
 		}
-		Expect(29 /* "}" */);
+		Expect(28 /* "}" */);
 }
 
 void Parser::Stat(AstBase *&stat) {
 		VarDeclAst *varDecl; AstBase *expr = NULL; AstBase *substat; 
-		if (la->kind == 31 /* "if" */) {
+		if (la->kind == 30 /* "if" */) {
 			Get();
-			Expect(21 /* "(" */);
+			Expect(20 /* "(" */);
 			Expr(expr);
-			Expect(22 /* ")" */);
+			Expect(21 /* ")" */);
 			IfAst *ifstat = new IfAst( expr ); stat = ifstat; 
-			Expect(28 /* "{" */);
+			Expect(27 /* "{" */);
 			while (StartOf(3)) {
 				if (StartOf(4)) {
 					Stat(substat);
@@ -361,10 +345,10 @@ void Parser::Stat(AstBase *&stat) {
 					ifstat->AddIf( varDecl ); 
 				}
 			}
-			Expect(29 /* "}" */);
-			if (la->kind == 32 /* "else" */) {
+			Expect(28 /* "}" */);
+			if (la->kind == 31 /* "else" */) {
 				Get();
-				Expect(28 /* "{" */);
+				Expect(27 /* "{" */);
 				while (StartOf(3)) {
 					if (StartOf(4)) {
 						Stat(substat);
@@ -374,22 +358,22 @@ void Parser::Stat(AstBase *&stat) {
 						ifstat->AddElse( varDecl ); 
 					}
 				}
-				Expect(29 /* "}" */);
+				Expect(28 /* "}" */);
 			}
-		} else if (la->kind == 33 /* "return" */) {
+		} else if (la->kind == 32 /* "return" */) {
 			Get();
 			if (StartOf(2)) {
 				Expr(expr);
 			}
-			Expect(14 /* ";" */);
+			Expect(13 /* ";" */);
 			stat = new ReturnStat( expr ); 
-		} else if (la->kind == 34 /* "while" */) {
+		} else if (la->kind == 33 /* "while" */) {
 			Get();
-			Expect(21 /* "(" */);
+			Expect(20 /* "(" */);
 			Expr(expr);
-			Expect(22 /* ")" */);
+			Expect(21 /* ")" */);
 			WhileAst *whilestat = new WhileAst( expr ); stat = whilestat; 
-			Expect(28 /* "{" */);
+			Expect(27 /* "{" */);
 			while (StartOf(3)) {
 				if (StartOf(4)) {
 					Stat(substat);
@@ -399,8 +383,8 @@ void Parser::Stat(AstBase *&stat) {
 					whilestat->AddExpr( varDecl ); 
 				}
 			}
-			Expect(29 /* "}" */);
-		} else if (la->kind == 28 /* "{" */) {
+			Expect(28 /* "}" */);
+		} else if (la->kind == 27 /* "{" */) {
 			Get();
 			BlockAst *blockstat = new BlockAst; stat = blockstat; 
 			while (StartOf(3)) {
@@ -412,53 +396,52 @@ void Parser::Stat(AstBase *&stat) {
 					blockstat->AddExpr( varDecl ); 
 				}
 			}
-			Expect(29 /* "}" */);
+			Expect(28 /* "}" */);
 		} else if (IsFunction()) {
 			Expect(_ident);
-			std::wstring funcName = t->val; std::wstring typed; 
-			if (la->kind == 19 /* "<" */) {
+			std::wstring funcName = t->val; AstBase *typed = NULL; 
+			if (la->kind == 18 /* "<" */) {
 				Get();
-				Expect(_ident);
-				typed = t->val; 
-				Expect(20 /* ">" */);
+				Factor(typed);
+				Expect(19 /* ">" */);
 			}
-			Expect(21 /* "(" */);
+			Expect(20 /* "(" */);
 			AstVec exprVec; 
 			if (StartOf(2)) {
 				ExprList(exprVec);
 			}
-			Expect(22 /* ")" */);
-			stat = new CallAst( funcName.c_str(), typed. c_str(), exprVec ); 
-			Expect(14 /* ";" */);
+			Expect(21 /* ")" */);
+			stat = new CallAst( funcName.c_str(), typed, exprVec ); 
+			Expect(13 /* ";" */);
 		} else if (la->kind == _ident) {
 			Get();
 			IdentAst *identStat = new IdentAst( t->val ); stat = identStat; IdentVec identVec; AstBase *expr; 
-			if (la->kind == 12 /* "[" */) {
+			if (la->kind == 11 /* "[" */) {
 				Get();
 				Expr(expr);
 				identStat->SetArrayIndex( expr ); 
-				Expect(13 /* "]" */);
+				Expect(12 /* "]" */);
 			}
-			while (la->kind == 23 /* "." */) {
+			while (la->kind == 22 /* "." */) {
 				Get();
 				Expect(_ident);
 				identVec.push_back( t->val ); 
 			}
 			identStat->SetMemberList( identVec ); 
-			if (la->kind == 35 /* "=" */) {
+			if (la->kind == 34 /* "=" */) {
 				Get();
 				Expr(expr);
 				stat = new AssignAst( identStat->GetNameWC(), identStat->GetArrayIndex(), identVec, expr ); delete identStat; 
 			}
-			Expect(14 /* ";" */);
-		} else SynErr(46);
+			Expect(13 /* ";" */);
+		} else SynErr(45);
 }
 
 void Parser::Term(AstBase* &term) {
 		int op; AstBase *factor; 
 		Factor(factor);
 		term = factor; 
-		while (la->kind == 17 /* "*" */ || la->kind == 18 /* "/" */) {
+		while (la->kind == 16 /* "*" */ || la->kind == 17 /* "/" */) {
 			MulOp(op);
 			Factor(factor);
 			term = new BinaryAst( term, op, factor ); 
@@ -467,63 +450,63 @@ void Parser::Term(AstBase* &term) {
 
 void Parser::Struct(StructDecl *&def) {
 		VarDeclAst *varDecl; 
-		Expect(36 /* "struct" */);
+		Expect(35 /* "struct" */);
 		Expect(_ident);
 		def = new StructDecl( t->val ); 
-		Expect(28 /* "{" */);
-		while (la->kind == 11 /* "var" */) {
+		Expect(27 /* "{" */);
+		while (la->kind == 10 /* "var" */) {
 			VarDecl(varDecl);
 			def->AddVarDecl( varDecl ); 
 		}
-		Expect(29 /* "}" */);
-		Expect(14 /* ";" */);
+		Expect(28 /* "}" */);
+		Expect(13 /* ";" */);
 }
 
 void Parser::ProcDefDecl(ProcDefDeclAst* &procDecl) {
 		int type; DeclVec declVec; 
-		Expect(27 /* "function" */);
+		Expect(26 /* "function" */);
 		procDecl = new ProcDefDeclAst(); 
 		ReturnType(type);
 		procDecl->SetReturnType( type ); 
 		Expect(_ident);
 		procDecl->SetName( t->val ); 
-		Expect(21 /* "(" */);
+		Expect(20 /* "(" */);
 		if (StartOf(1)) {
 			DeclarationList(declVec);
 		}
-		Expect(22 /* ")" */);
+		Expect(21 /* ")" */);
 		procDecl->SetDeclaration(declVec); 
-		Expect(14 /* ";" */);
+		Expect(13 /* ";" */);
 }
 
 void Parser::Interface(InterfaceDecl *&def) {
 		ProcDefDeclAst *procDecl; 
-		Expect(37 /* "interface" */);
+		Expect(36 /* "interface" */);
 		Expect(_ident);
 		def = new InterfaceDecl( t->val ); 
-		Expect(28 /* "{" */);
-		while (la->kind == 27 /* "function" */) {
+		Expect(27 /* "{" */);
+		while (la->kind == 26 /* "function" */) {
 			ProcDefDecl(procDecl);
 			def->AddProcDecl( procDecl ); 
 		}
-		Expect(29 /* "}" */);
-		Expect(14 /* ";" */);
+		Expect(28 /* "}" */);
+		Expect(13 /* ";" */);
 }
 
 void Parser::Taste() {
 		StructDecl *defDecl; VarDeclAst *varDecl; ProcDeclAst *procDecl; InterfaceDecl *ifaceDecl; 
-		Expect(38 /* "package" */);
+		Expect(37 /* "package" */);
 		Expect(_ident);
 		package = new Package( t->val ); 
-		Expect(28 /* "{" */);
+		Expect(27 /* "{" */);
 		while (StartOf(5)) {
-			if (la->kind == 37 /* "interface" */) {
+			if (la->kind == 36 /* "interface" */) {
 				Interface(ifaceDecl);
 				package->AddInterfaceDecl( ifaceDecl ); 
-			} else if (la->kind == 36 /* "struct" */) {
+			} else if (la->kind == 35 /* "struct" */) {
 				Struct(defDecl);
 				package->AddStructDecl( defDecl ); 
-			} else if (la->kind == 11 /* "var" */) {
+			} else if (la->kind == 10 /* "var" */) {
 				VarDecl(varDecl);
 				package->AddVarDecl( varDecl ); 
 			} else {
@@ -531,7 +514,7 @@ void Parser::Taste() {
 				package->AddProcDecl( procDecl ); 
 			}
 		}
-		Expect(29 /* "}" */);
+		Expect(28 /* "}" */);
 }
 
 
@@ -635,7 +618,7 @@ void Parser::Parse() {
 }
 
 Parser::Parser(Scanner *scanner) {
-	maxT = 39;
+	maxT = 38;
 
 	ParserInitCaller<Parser>::CallInit(this);
 	dummyToken = NULL;
@@ -650,13 +633,13 @@ bool Parser::StartOf(int s) {
 	const bool T = true;
 	const bool x = false;
 
-	static bool set[6][41] = {
-		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,T,x,x, x,T,T,T, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, T,x,x,x, x,T,x,x, T,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x},
-		{x,T,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, x,T,T,x, x,x,x,x, x},
-		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, T,x,x,T, x,T,T,x, x,x,x,x, x},
-		{x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, x,x,x,x, T,T,x,x, x}
+	static bool set[6][40] = {
+		{T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{x,T,x,x, x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{x,T,T,T, T,x,x,x, x,x,x,x, x,x,x,T, x,x,x,x, T,x,x,T, T,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x},
+		{x,T,x,x, x,x,x,x, x,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,T,x, T,T,x,x, x,x,x,x},
+		{x,T,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,x,T, x,x,T,x, T,T,x,x, x,x,x,x},
+		{x,x,x,x, x,x,x,x, x,x,T,x, x,x,x,x, x,x,x,x, x,x,x,x, x,x,T,x, x,x,x,x, x,x,x,T, T,x,x,x}
 	};
 
 
@@ -683,47 +666,46 @@ void Errors::SynErr(int line, int col, int n) {
 			case 3: s = coco_string_create(L"floatingpoint expected"); break;
 			case 4: s = coco_string_create(L"characters expected"); break;
 			case 5: s = coco_string_create(L"\"int\" expected"); break;
-			case 6: s = coco_string_create(L"\"bool\" expected"); break;
-			case 7: s = coco_string_create(L"\"float\" expected"); break;
-			case 8: s = coco_string_create(L"\"userptr\" expected"); break;
-			case 9: s = coco_string_create(L"\"string\" expected"); break;
-			case 10: s = coco_string_create(L"\"void\" expected"); break;
-			case 11: s = coco_string_create(L"\"var\" expected"); break;
-			case 12: s = coco_string_create(L"\"[\" expected"); break;
-			case 13: s = coco_string_create(L"\"]\" expected"); break;
-			case 14: s = coco_string_create(L"\";\" expected"); break;
-			case 15: s = coco_string_create(L"\"+\" expected"); break;
-			case 16: s = coco_string_create(L"\"-\" expected"); break;
-			case 17: s = coco_string_create(L"\"*\" expected"); break;
-			case 18: s = coco_string_create(L"\"/\" expected"); break;
-			case 19: s = coco_string_create(L"\"<\" expected"); break;
-			case 20: s = coco_string_create(L"\">\" expected"); break;
-			case 21: s = coco_string_create(L"\"(\" expected"); break;
-			case 22: s = coco_string_create(L"\")\" expected"); break;
-			case 23: s = coco_string_create(L"\".\" expected"); break;
-			case 24: s = coco_string_create(L"\"true\" expected"); break;
-			case 25: s = coco_string_create(L"\"false\" expected"); break;
-			case 26: s = coco_string_create(L"\",\" expected"); break;
-			case 27: s = coco_string_create(L"\"function\" expected"); break;
-			case 28: s = coco_string_create(L"\"{\" expected"); break;
-			case 29: s = coco_string_create(L"\"}\" expected"); break;
-			case 30: s = coco_string_create(L"\"==\" expected"); break;
-			case 31: s = coco_string_create(L"\"if\" expected"); break;
-			case 32: s = coco_string_create(L"\"else\" expected"); break;
-			case 33: s = coco_string_create(L"\"return\" expected"); break;
-			case 34: s = coco_string_create(L"\"while\" expected"); break;
-			case 35: s = coco_string_create(L"\"=\" expected"); break;
-			case 36: s = coco_string_create(L"\"struct\" expected"); break;
-			case 37: s = coco_string_create(L"\"interface\" expected"); break;
-			case 38: s = coco_string_create(L"\"package\" expected"); break;
-			case 39: s = coco_string_create(L"??? expected"); break;
-			case 40: s = coco_string_create(L"invalid Type"); break;
-			case 41: s = coco_string_create(L"invalid ReturnType"); break;
-			case 42: s = coco_string_create(L"invalid AddOp"); break;
-			case 43: s = coco_string_create(L"invalid MulOp"); break;
-			case 44: s = coco_string_create(L"invalid RelOp"); break;
-			case 45: s = coco_string_create(L"invalid Factor"); break;
-			case 46: s = coco_string_create(L"invalid Stat"); break;
+			case 6: s = coco_string_create(L"\"float\" expected"); break;
+			case 7: s = coco_string_create(L"\"userptr\" expected"); break;
+			case 8: s = coco_string_create(L"\"string\" expected"); break;
+			case 9: s = coco_string_create(L"\"void\" expected"); break;
+			case 10: s = coco_string_create(L"\"var\" expected"); break;
+			case 11: s = coco_string_create(L"\"[\" expected"); break;
+			case 12: s = coco_string_create(L"\"]\" expected"); break;
+			case 13: s = coco_string_create(L"\";\" expected"); break;
+			case 14: s = coco_string_create(L"\"+\" expected"); break;
+			case 15: s = coco_string_create(L"\"-\" expected"); break;
+			case 16: s = coco_string_create(L"\"*\" expected"); break;
+			case 17: s = coco_string_create(L"\"/\" expected"); break;
+			case 18: s = coco_string_create(L"\"<\" expected"); break;
+			case 19: s = coco_string_create(L"\">\" expected"); break;
+			case 20: s = coco_string_create(L"\"(\" expected"); break;
+			case 21: s = coco_string_create(L"\")\" expected"); break;
+			case 22: s = coco_string_create(L"\".\" expected"); break;
+			case 23: s = coco_string_create(L"\"true\" expected"); break;
+			case 24: s = coco_string_create(L"\"false\" expected"); break;
+			case 25: s = coco_string_create(L"\",\" expected"); break;
+			case 26: s = coco_string_create(L"\"function\" expected"); break;
+			case 27: s = coco_string_create(L"\"{\" expected"); break;
+			case 28: s = coco_string_create(L"\"}\" expected"); break;
+			case 29: s = coco_string_create(L"\"==\" expected"); break;
+			case 30: s = coco_string_create(L"\"if\" expected"); break;
+			case 31: s = coco_string_create(L"\"else\" expected"); break;
+			case 32: s = coco_string_create(L"\"return\" expected"); break;
+			case 33: s = coco_string_create(L"\"while\" expected"); break;
+			case 34: s = coco_string_create(L"\"=\" expected"); break;
+			case 35: s = coco_string_create(L"\"struct\" expected"); break;
+			case 36: s = coco_string_create(L"\"interface\" expected"); break;
+			case 37: s = coco_string_create(L"\"package\" expected"); break;
+			case 38: s = coco_string_create(L"??? expected"); break;
+			case 39: s = coco_string_create(L"invalid Type"); break;
+			case 40: s = coco_string_create(L"invalid ReturnType"); break;
+			case 41: s = coco_string_create(L"invalid AddOp"); break;
+			case 42: s = coco_string_create(L"invalid MulOp"); break;
+			case 43: s = coco_string_create(L"invalid RelOp"); break;
+			case 44: s = coco_string_create(L"invalid Factor"); break;
+			case 45: s = coco_string_create(L"invalid Stat"); break;
 
 		default:
 		{
