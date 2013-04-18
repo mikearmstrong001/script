@@ -547,6 +547,7 @@ int StructDecl::FindElementIndex( int hashName )
 		if ( m_flattenedProps[i].hashName == hashName )
 			return i;
 	}
+	assert(!"element not found");
 	return -1;
 }
 

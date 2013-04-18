@@ -52,8 +52,8 @@ CHARACTERS
 TOKENS
   ident  = [ letter {letter | digit | '_' } ':' ] letter {letter | digit | '_' }.
   //varname = [ letter {letter | digit} ':' ] letter {letter | digit}.
-  number = digit {digit}.
-  floatingpoint = digit {digit} '.' {digit}.
+  number = [ '-' ] digit {digit}.
+  floatingpoint = [ '-' ] digit {digit} '.' {digit}.
   characters = '"' {character} '"'.
   
 COMMENTS FROM "/*" TO "*/" NESTED
@@ -74,6 +74,15 @@ Type<int &type>
  | "string"						(. type = STRING; .)
  | "struct"						(. type = STRUCT; .)
  | ident						(. type = Hash( t->val ); .)
+ ).
+
+TypeNoUser<int &type>
+=
+ ( "int"						(. type = INTEGER; .)
+ | "float"						(. type = FLOATINGPOINT; .)
+ | "userptr"					(. type = USERPTR; .)
+ | "string"						(. type = STRING; .)
+ | "struct"						(. type = STRUCT; .)
  ).
 
 /*------------------------------------------------------------------------*/

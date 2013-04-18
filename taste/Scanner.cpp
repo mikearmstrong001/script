@@ -455,22 +455,22 @@ void Scanner::Init() {
 	for (i = 65; i <= 90; ++i) start.set(i, 6);
 	for (i = 97; i <= 122; ++i) start.set(i, 6);
 	for (i = 48; i <= 57; ++i) start.set(i, 7);
+	start.set(45, 23);
 	start.set(34, 4);
 	start.set(91, 8);
 	start.set(93, 9);
 	start.set(59, 10);
 	start.set(43, 11);
-	start.set(45, 12);
-	start.set(42, 13);
-	start.set(47, 14);
-	start.set(60, 15);
-	start.set(62, 16);
-	start.set(40, 17);
-	start.set(41, 18);
-	start.set(46, 19);
-	start.set(44, 20);
-	start.set(123, 21);
-	start.set(125, 22);
+	start.set(42, 12);
+	start.set(47, 13);
+	start.set(60, 14);
+	start.set(62, 15);
+	start.set(40, 16);
+	start.set(41, 17);
+	start.set(46, 18);
+	start.set(44, 19);
+	start.set(123, 20);
+	start.set(125, 21);
 	start.set(61, 24);
 		start.set(Buffer::EoF, -1);
 	keywords.set(L"int", 5);
@@ -716,33 +716,35 @@ Token* Scanner::NextToken() {
 		case 11:
 			{t->kind = 15; break;}
 		case 12:
-			{t->kind = 16; break;}
-		case 13:
 			{t->kind = 17; break;}
-		case 14:
+		case 13:
 			{t->kind = 18; break;}
-		case 15:
+		case 14:
 			{t->kind = 19; break;}
-		case 16:
+		case 15:
 			{t->kind = 20; break;}
-		case 17:
+		case 16:
 			{t->kind = 21; break;}
-		case 18:
+		case 17:
 			{t->kind = 22; break;}
-		case 19:
+		case 18:
 			{t->kind = 23; break;}
-		case 20:
+		case 19:
 			{t->kind = 26; break;}
-		case 21:
+		case 20:
 			{t->kind = 28; break;}
-		case 22:
+		case 21:
 			{t->kind = 29; break;}
-		case 23:
-			case_23:
+		case 22:
+			case_22:
 			{t->kind = 30; break;}
+		case 23:
+			recEnd = pos; recKind = 16;
+			if ((ch >= L'0' && ch <= L'9')) {AddCh(); goto case_7;}
+			else {t->kind = 16; break;}
 		case 24:
 			recEnd = pos; recKind = 35;
-			if (ch == L'=') {AddCh(); goto case_23;}
+			if (ch == L'=') {AddCh(); goto case_22;}
 			else {t->kind = 35; break;}
 
 	}

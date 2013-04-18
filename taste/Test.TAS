@@ -1,93 +1,183 @@
 
-package Test {
-	var int[] items0;
-	var float[] items1;
-	var t1 items3;
-	//var t1[] items4;
+package Pong {
 
-	interface hasPrint
+	var userptr world;
+
+	struct float4
 	{
-		function float testret2();
+		var float x;
+		var float y;
+		var float z;
+		var float w;
 	};
 
-	struct t1
+	function float4 addf4f4( float4 a, float4 b )
 	{
-		var int a;
-		var int b;
+		var float4 out;
+		out.x = a.x + b.x;
+		out.y = a.y + b.y;
+		out.z = a.z + b.z;
+		out.w = a.w + b.w;
+		return out;
+	}
+
+	function float4 maddf4f4f( float4 a, float4 b, float c )
+	{
+		var float4 out;
+		out.x = a.x + b.x * c;
+		out.y = a.y + b.y * c;
+		out.z = a.z + b.z * c;
+		out.w = a.w + b.w * c;
+		return out;
+	}
+
+	function float4 mulf4f( float4 a, float b )
+	{
+		var float4 out;
+		out.x = a.x * b;
+		out.y = a.y * b;
+		out.z = a.z * b;
+		out.w = a.w * b;
+		return out;
+	}
+
+	function float4 init4f( float4 out, float x, float y, float z, float w )
+	{
+		out.x = x;
+		out.y = y;
+		out.z = z;
+		out.w = w;
+		return out;
+	}
+
+	struct float2
+	{
+		var float x;
+		var float y;
 	};
 
-	struct t2
+	function float2 addf2f2( float2 a, float2 b )
 	{
-		var t1 t;
-		var float c;
+		var float2 out;
+		out.x = a.x + b.x;
+		out.y = a.y + b.y;
+		return out;
+	}
+
+	function float2 maddf2f2f( float2 a, float2 b, float c )
+	{
+		var float2 out;
+		out.x = a.x + b.x * c;
+		out.y = a.y + b.y * c;
+		return out;
+	}
+
+	function float2 mulf2f( float2 a, float b )
+	{
+		var float2 out;
+		out.x = a.x * b;
+		out.y = a.y * b;
+		return out;
+	}
+
+	function float2 init2f( float2 out, float x, float y )
+	{
+		out.x = x;
+		out.y = y;
+		return out;
+	}
+
+	struct ball
+	{
+		var float2 pos;
+		var float2 vel;
+		var userptr renderHandle;
 	};
 
-	function float testret2<t2 v>()
+	function void Init<ball b>( float x, float y )
 	{
-		return v.c;
-	}
-	function float testret2<t1 v>()
-	{
-		return 8.1;
+		initf2( b.pos, x, y );
+		initf2( b.vel, -1., -1. );
+		b.renderHandle = createRenderCircle<world>( 10.0, b.pos.x, b.pos.y );
 	}
 
-	function float testret()
+	function void Update<ball b>( float dt )
 	{
-		return 8.0;
+		b.pos = maddf2f2f( b.pos, b.vel, dt );
+		if ( b.pos.x < 0. )
+		{
+			b.vel.x = -b.vel.x;
+		}
+		if ( b.pos.x > 1280.0 )
+		{
+			b.vel.x = -b.vel.x;
+		}
+		if ( b.pos.y < 0. )
+		{
+			b.vel.y = -b.vel.y;
+		}
+		if ( b.pos.y > 720.0 )
+		{
+			b.vel.y = -b.vel.y;
+		}
+		updateRenderHandle<world>(b.renderHandle,b.pos.x,b.pos.y);
 	}
-	
+
+	struct paddle
+	{
+		var float x;
+		var float y;
+		var float dim;
+		var userptr renderHandle;
+	};
+
+	function void Init<paddle p>( float x, float y )
+	{
+		p.x = x;
+		p.y = y;
+		p.dim = 50.0;
+		p.renderHandle = createRenderRectangle<world>( p.x, p.y, 10.0, p.dim );
+	}
+
+	function void Update<paddle p>( float dt )
+	{
+		if ( p.y < 0. )
+		{
+			p.y = 0.0;
+		}
+		if ( p.y > 720.0 )
+		{
+			p.y = 720.0;
+		}
+		updateRenderHandle<world>(p.renderHandle,p.x,p.y);
+	}
+
+	var ball b;
+	var paddle p;
+
+	function void Init()
+	{
+		//world = createWorld<App>();
+		Init<b>();
+		Init<p>();
+	}
+
+	function void Update( float dt )
+	{
+	}
+
+	function void FixedUpdate( float dt )
+	{
+		Update<b>(dt);
+		Update<p>(dt);
+	}
+
 	function void Main()
 	{
-		var t2 p;
-		var t1 q;
-		var struct[] structarray;
-		pushback<structarray>( p );
-		pushback<structarray>( q );
-
-		p.c = testret2<structarray[0]>();
-		p.c = testret2<structarray[1]>();
-
-		var float f;
-		f = testret();
-
-		if ( implements( p, hasPrint ) )
-		{
-		}
-
-		p.c = testret2<p>();
-		p.c = testret2<items3>();
-		p.t.a = 2;
-
-
-		items3.a = 1;
-		items3.b = items3.a;
-
-		var string str;
-		str = "blah";
-
-		var string[] strarray;
-		pushback<strarray>( str );
-
-		var int c;
-		f = cfunc( 10 );
-		var int i;
-		i = 200;
-		while ( i > 0 )
-		{
-			var int numitems;
-			numitems = 1;
-			var int j;
-			j=0;
-			while ( j < numitems )
-			{
-				if ( implements( p, hasPrint ) )
-				{
-					printffloat( f );
-				}
-				j = j+1;
-			}
-			i = i - 1;
-		}
+		var ball b;
+		var float dt;
+		dt = 0.01;
+		b.pos = maddf2f2f( b.pos, b.vel, dt );
 	}
 }
 
