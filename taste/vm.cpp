@@ -247,7 +247,7 @@ bool implements( vmstate &state )
 {
 	const var &arg0 = state.GetArg( -2 );
 	int arg1 = state.GetArgAsInt( -1 );
-	int typehash = (arg0.type == STRUCT) ? arg0.s->m_type : arg0.type;
+	int typehash = (arg0.type == STRUCT) ? arg0.s.type : arg0.type;
 	vminterface &iface = state.ifaces[ arg1 ];
 	Map<int>::ConstIterator f = iface.typeCache.cfind( typehash );
 	int found = 1;
@@ -320,6 +320,276 @@ void vmRegister( vmstate &state, functionreg_s reg[] )
 	}
 }
 
+static void PopItem( var &item, var &v0, int const *ops, int &pc, int entries, vmstate &state )
+{
+	if ( item.type == STRUCT )
+	{
+		CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
+		int eleIndex = ops[pc++];
+		int eleType = ops[pc++];
+		if ( eleIndex & 0x80000000 )
+		{
+			vmstructprops *s = state.structProps[eleType];
+			CEXCEPTION_ERROR_CONDITION( s!=NULL, "unknown vmstruct" );
+			CEXCEPTION_ERROR_CONDITION( v0.type == STRUCT, "expected struct" );
+			int num = s->properties.size();
+			int offset = eleIndex & 0x7fffffff;
+			CEXCEPTION_ERROR_CONDITION( eleType == v0.s.type, "unepected type" );
+			for (int i=0; i<num; i++)
+			{
+				item.s.s->m_data[item.s.offset+offset+i] = v0.s.s->m_data[ v0.s.offset+i ];
+			}
+		}
+		else
+		{
+			CEXCEPTION_ERROR_CONDITION((eleIndex & 0x80000000) == 0, "unsupported" );
+			item.s.s->m_data[item.s.offset+eleIndex] = v0;
+		}
+	}
+	else
+	if ( entries )
+	{
+		CEXCEPTION_ERROR("bad number of entries on type");
+		pc+=entries;
+	}
+	else
+	{
+		if ( item.type == INTEGER )
+		{
+			item.i = ToInt( v0 );
+		}
+		else
+		if ( item.type == FLOATINGPOINT )
+		{
+			item.f = ToFloat( v0 );
+		}
+		else
+		{
+			CEXCEPTION_ERROR("err");
+		}
+	}
+}
+
+static void PushItem( var &item, int const *ops, int &pc, int entries, vmstate &state )
+{
+	if ( item.type == STRUCT )
+	{
+		if ( entries == 0 )
+		{
+			state.stack.push( item );
+		}
+		else
+		{
+			CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
+			int eleIndex = ops[pc++];
+			int eleType = ops[pc++];
+			if ( eleIndex & 0x80000000 )
+			{
+				var &v = state.stack.push();
+				v.type = STRUCT;
+				v.s.offset = eleIndex & 0x7fffffff;
+				v.s.s = item.s.s;
+				v.s.type = eleType;
+			}
+			else
+			{
+				CEXCEPTION_ERROR_CONDITION((eleIndex & 0x80000000) == 0, "unsupported" );
+				state.stack.push( item.s.s->m_data[item.s.offset + eleIndex] );
+			}
+		}
+	}
+	else
+	if ( entries )
+	{
+		CEXCEPTION_ERROR_CONDITION( entries == 1, "unexpected entries on type");
+		int lookup = ops[pc];
+		int hash = (lookup) ^ item.type;
+		pc+=entries;
+		state.stack.push( state.globals[hash] );
+	}
+	else
+	{
+		state.stack.push( item );
+	}
+}
+
+static void MakeStruct( var &item, int type, vmstate &state )
+{
+	vmstructprops *props = state.structProps[type];
+	vmstruct *structmem = (vmstruct *)malloc( sizeof(vmstruct) + sizeof(var)*props->properties.size() );
+	item.type = STRUCT;
+	item.s.offset = 0;
+	item.s.type = type;
+	item.s.s = structmem;
+	item.s.s->m_creationType = type;
+	item.s.s->m_size = props->properties.size();
+	for ( int i=0; i<props->properties.size(); i++)
+	{
+		var &curitem = item.s.s->m_data[i];
+		curitem.type = (VARTYPE)props->properties[i].itemType;
+		if ( curitem.type == INTEGERARRAY )
+		{
+			curitem.iArrayPtr = new vmarrayvar<int>;
+		}
+		else
+		if ( curitem.type == FLOATINGPOINTARRAY )
+		{
+			curitem.fArrayPtr = new vmarrayvar<float>;
+		}
+		else
+		if ( curitem.type == USERPTRARRAY )
+		{
+			curitem.uArrayPtr = new vmarrayvar<void*>;
+		}
+		else
+		if ( curitem.type == STRINGARRAY )
+		{
+			curitem.strArrayPtr = new vmarrayvar<vmstring*>;
+		}
+		else
+		if ( curitem.type == STRUCTARRAY )
+		{
+			curitem.sArrayPtr = new vmarrayvar<vmstructref>;
+		}
+		else
+		{
+			curitem.i = 0;
+		}
+	}
+}
+
+static void PushItemArray( var &v, int index, vmstate &state )
+{
+	if ( v.type == INTEGERARRAY )
+	{
+		var &v0 = state.stack.push();
+		v0.type = INTEGER;
+		v0.i = v.iArrayPtr->m_items[index];
+	}
+	else
+	if ( v.type == FLOATINGPOINTARRAY )
+	{
+		var &v0 = state.stack.push();
+		v0.type = FLOATINGPOINT;
+		v0.f = v.fArrayPtr->m_items[index];
+	}
+	else
+	if ( v.type == USERPTRARRAY )
+	{
+		var &v0 = state.stack.push();
+		v0.type = USERPTR;
+		v0.u = v.uArrayPtr->m_items[index];
+	}
+	else
+	if ( v.type == STRINGARRAY )
+	{
+		var &v0 = state.stack.push();
+		v0.type = STRING;
+		v0.str = v.strArrayPtr->m_items[index];
+	}
+	else
+	if ( v.type == STRUCTARRAY )
+	{
+		var &v0 = state.stack.push();
+		v0.type = STRUCT;
+		v0.s = v.sArrayPtr->m_items[index];
+	}
+	else
+	{
+		CEXCEPTION_ERROR( "err" );
+	}
+}
+
+static void PopItemArray( var &v, int index, var &v0 )
+{
+	if ( v.type == INTEGERARRAY )
+	{
+		v.iArrayPtr->m_items[index] = ToInt( v0 );
+	}
+	else
+	if ( v.type == FLOATINGPOINTARRAY )
+	{
+		v.fArrayPtr->m_items[index] = ToFloat( v0 );
+	}
+	else
+	if ( v.type == USERPTRARRAY && v0.type == USERPTR )
+	{
+		v.uArrayPtr->m_items[index] = v0.u;
+	}
+	else
+	if ( v.type == STRINGARRAY && v0.type == STRING )
+	{
+		v.strArrayPtr->m_items[index] = v0.str;
+	}
+	else
+	if ( v.type == STRUCTARRAY && v0.type == STRUCT )
+	{
+		v.sArrayPtr->m_items[index] = v0.s;
+	}
+	else
+	{
+		CEXCEPTION_ERROR( "err" );
+	}
+}
+
+static void MakeVar( var &item, VARTYPE type )
+{
+	item.type = type;
+	if ( type == INTEGERARRAY )
+	{
+		item.iArrayPtr = new vmarrayvar<int>;
+	}
+	else
+	if ( type == FLOATINGPOINTARRAY )
+	{
+		item.fArrayPtr = new vmarrayvar<float>;
+	}
+	else
+	if ( type == USERPTRARRAY )
+	{
+		item.uArrayPtr = new vmarrayvar<void*>;
+	}
+	else
+	if ( type == STRINGARRAY )
+	{
+		item.strArrayPtr = new vmarrayvar<vmstring*>;
+	}
+	else
+	if ( type == STRUCTARRAY )
+	{
+		item.sArrayPtr = new vmarrayvar<vmstructref>;
+	}
+	else
+	{
+		item.i = 0;
+	}
+}
+
+static void Call( const var &val, int pc, vmstate &state )
+{
+	if ( val.type == CFUNCTION )
+	{
+		state.envStack.push( state.stack.size() );
+		bool res = val.cfunc( state );
+		// cfunc should clear the stack based on args
+		state.envStack.pop();
+		if ( res )
+		{
+			state.stack.push( state.rv );
+		}
+	}
+	else
+	if ( val.type == VMFUNCTION )
+	{
+		state.pcStack.push( pc );
+		pc = val.i;
+	}
+	else
+	{
+		CEXCEPTION_ERROR("bad type");
+	}
+}
+
 void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 {
 	vmRegister( state, globalFuncs );
@@ -379,35 +649,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int index = ops[pc++];
 				int prototype = ops[pc++];
 				var &item = state.stack[state.envStack.top()+index];
-				item.type = type;
-				if ( type == INTEGERARRAY )
-				{
-					item.iArrayPtr = new vmarrayvar<int>;
-				}
-				else
-				if ( type == FLOATINGPOINTARRAY )
-				{
-					item.fArrayPtr = new vmarrayvar<float>;
-				}
-				else
-				if ( type == USERPTRARRAY )
-				{
-					item.uArrayPtr = new vmarrayvar<void*>;
-				}
-				else
-				if ( type == STRINGARRAY )
-				{
-					item.strArrayPtr = new vmarrayvar<vmstring*>;
-				}
-				else
-				if ( type == STRUCTARRAY )
-				{
-					item.sArrayPtr = new vmarrayvar<vmstruct*>;
-				}
-				else
-				{
-					item.i = 0;
-				}
+				MakeVar( item, type );
 			}
 			break;
 		case OPC_MAKEVARG:
@@ -416,35 +658,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int index = ops[pc++];
 				int prototype = ops[pc++];
 				var &item = state.globals[index];
-				item.type = type;
-				if ( type == INTEGERARRAY )
-				{
-					item.iArrayPtr = new vmarrayvar<int>;
-				}
-				else
-				if ( type == FLOATINGPOINTARRAY )
-				{
-					item.fArrayPtr = new vmarrayvar<float>;
-				}
-				else
-				if ( type == USERPTRARRAY )
-				{
-					item.uArrayPtr = new vmarrayvar<void*>;
-				}
-				else
-				if ( type == STRINGARRAY )
-				{
-					item.strArrayPtr = new vmarrayvar<vmstring*>;
-				}
-				else
-				if ( type == STRUCTARRAY )
-				{
-					item.sArrayPtr = new vmarrayvar<vmstruct*>;
-				}
-				else
-				{
-					item.i = 0;
-				}
+				MakeVar( item, type );
 			}
 			break;
 		case OPC_PUSHI:
@@ -459,56 +673,16 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 			{
 				int index = ops[pc++];
 				const var &val = state.globals[index];
-				if ( val.type == CFUNCTION )
-				{
-					state.envStack.push( state.stack.size() );
-					bool res = val.cfunc( state );
-					// cfunc should clear the stack based on args
-					state.envStack.pop();
-					if ( res )
-					{
-						state.stack.push( state.rv );
-					}
-				}
-				else
-				if ( val.type == VMFUNCTION )
-				{
-					state.pcStack.push( pc );
-					pc = val.i;
-				}
-				else
-				{
-					CEXCEPTION_ERROR("bad type");
-				}
+				Call( val, pc, state );
 			}
 			break;
 		case OPC_CALLTYPED:
 			{
 				const var &valtyped = state.stack.top();
 				int index = ops[pc++];
-				int typehash = (valtyped.type == STRUCT) ? valtyped.s->m_type : valtyped.type;
+				int typehash = (valtyped.type == STRUCT) ? valtyped.s.type : valtyped.type;
 				const var &val = state.globals[index^typehash];
-				if ( val.type == CFUNCTION )
-				{
-					state.envStack.push( state.stack.size() );
-					bool res = val.cfunc( state );
-					// cfunc should clear the stack based on args
-					state.envStack.pop();
-					if ( res )
-					{
-						state.stack.push( state.rv );
-					}
-				}
-				else
-				if ( val.type == VMFUNCTION )
-				{
-					state.pcStack.push( pc );
-					pc = val.i;
-				}
-				else
-				{
-					CEXCEPTION_ERROR("bad type");
-				}
+				Call( val, pc, state );
 			}
 			break;
 		case OPC_MUL:
@@ -696,39 +870,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
 				var &item = state.stack[state.envStack.top()+index];
-				if ( item.type == STRUCT )
-				{
-					CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
-					int eleIndex = ops[pc++];
-					item.s->m_data[eleIndex] = v0;
-				}
-				else
-				if ( entries )
-				{
-					CEXCEPTION_ERROR("unexpected entries on type");
-					pc+=entries;
-				}
-				else
-				{
-					if ( item.type == INTEGER )
-					{
-						item.i = ToInt( v0 );
-					}
-					else
-					if ( item.type == FLOATINGPOINT )
-					{
-						item.f = ToFloat( v0 );
-					}
-					else
-					if ( item.type == v0.type )
-					{
-						item = v0;
-					}
-					else
-					{
-						CEXCEPTION_ERROR("bad type");
-					}
-				}
+				PopItem( item, v0, ops, pc, entries, state );
 			}
 			break;
 		case OPC_PUSHITEM:
@@ -736,32 +878,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
 				var &item = state.stack[state.envStack.top()+index];
-				if ( item.type == STRUCT )
-				{
-					if ( entries == 0 )
-					{
-						state.stack.push( item );
-					}
-					else
-					{
-						CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
-						int eleIndex = ops[pc++];
-						state.stack.push( item.s->m_data[eleIndex] );
-					}
-				}
-				else
-				if ( entries )
-				{
-					CEXCEPTION_ERROR_CONDITION( entries == 1, "unexpected entries on type");
-					int lookup = ops[pc];
-					int hash = (lookup) ^ item.type;
-					pc+=entries;
-					state.stack.push( state.globals[hash] );
-				}
-				else
-				{
-					state.stack.push( item );
-				}
+				PushItem( item, ops, pc, entries, state ); 
 			}
 			break;
 		case OPC_POPITEMG:
@@ -771,34 +888,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
 				var &item = state.globals[index];
-				if ( item.type == STRUCT )
-				{
-					CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
-					int eleIndex = ops[pc++];
-					item.s->m_data[eleIndex] = v0;
-				}
-				else
-				if ( entries )
-				{
-					CEXCEPTION_ERROR("bad number of entries on type");
-					pc+=entries;
-				}
-				else
-				{
-					if ( item.type == INTEGER )
-					{
-						item.i = ToInt( v0 );
-					}
-					else
-					if ( item.type == FLOATINGPOINT )
-					{
-						item.f = ToFloat( v0 );
-					}
-					else
-					{
-						CEXCEPTION_ERROR("err");
-					}
-				}
+				PopItem( item, v0, ops, pc, entries, state );
 			}
 			break;
 		case OPC_PUSHITEMG:
@@ -806,32 +896,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int entries = ops[pc++]-1;
 				int index = ops[pc++];
 				var &item = state.globals[index];
-				if ( item.type == STRUCT )
-				{
-					if ( entries == 0 )
-					{
-						state.stack.push( item );
-					}
-					else
-					{
-						CEXCEPTION_ERROR_CONDITION( entries==1, "struct type expects single entry" );
-						int eleIndex = ops[pc++];
-						state.stack.push( item.s->m_data[eleIndex] );
-					}
-				}
-				else
-				if ( entries )
-				{
-					CEXCEPTION_ERROR_CONDITION( entries == 1, "unexpected entries on type");
-					int lookup = ops[pc];
-					int hash = (lookup) ^ item.type;
-					pc+=entries;
-					state.stack.push( state.globals[hash] );
-				}
-				else
-				{
-					state.stack.push( item );
-				}
+				PushItem( item, ops, pc, entries, state ); 
 			}
 			break;
 		case OPC_PUSHF:
@@ -850,40 +915,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int lookup = ops[pc++];
 				int index = ToInt( v1 );
 				var &v = state.globals[lookup];
-				if ( v.type == STRUCT )
-				{
-					int item = ops[pc++];
-					v.iArrayPtr->m_items[index*v.s->m_size+item] = ToInt( v0 );
-				}
-				else
-				if ( v.type == INTEGERARRAY )
-				{
-					v.iArrayPtr->m_items[index] = ToInt( v0 );
-				}
-				else
-				if ( v.type == FLOATINGPOINTARRAY )
-				{
-					v.fArrayPtr->m_items[index] = ToFloat( v0 );
-				}
-				else
-				if ( v.type == USERPTRARRAY && v0.type == USERPTR )
-				{
-					v.uArrayPtr->m_items[index] = v0.u;
-				}
-				else
-				if ( v.type == STRINGARRAY && v0.type == STRING )
-				{
-					v.strArrayPtr->m_items[index] = v0.str;
-				}
-				else
-				if ( v.type == STRUCTARRAY && v0.type == STRUCT )
-				{
-					v.sArrayPtr->m_items[index] = v0.s;
-				}
-				else
-				{
-					CEXCEPTION_ERROR( "err" );
-				}
+				PopItemArray( v, index, v0 );
 			}
 			break;
 		case OPC_POPITEMARRAY:
@@ -893,34 +925,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int lookup = ops[pc++];
 				int index = ToInt( v1 );
 				var &v = state.stack[state.envStack.top()+lookup];
-				if ( v.type == INTEGERARRAY )
-				{
-					v.iArrayPtr->m_items[index] = ToInt( v0 );
-				}
-				else
-				if ( v.type == FLOATINGPOINTARRAY )
-				{
-					v.fArrayPtr->m_items[index] = ToFloat( v0 );
-				}
-				else
-				if ( v.type == USERPTRARRAY && v0.type == USERPTR )
-				{
-					v.uArrayPtr->m_items[index] = v0.u;
-				}
-				else
-				if ( v.type == STRINGARRAY && v0.type == STRING )
-				{
-					v.strArrayPtr->m_items[index] = v0.str;
-				}
-				else
-				if ( v.type == STRUCTARRAY && v0.type == STRUCT )
-				{
-					v.sArrayPtr->m_items[index] = v0.s;
-				}
-				else
-				{
-					CEXCEPTION_ERROR( "err" );
-				}
+				PopItemArray( v, index, v0 );
 			}
 			break;
 		case OPC_PUSHITEMGARRAY:
@@ -929,44 +934,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int index = ToInt( v1 );
 				int lookup = ops[pc++];
 				var &v = state.globals[lookup];
-				if ( v.type == INTEGERARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = INTEGER;
-					v0.i = v.iArrayPtr->m_items[index];
-				}
-				else
-				if ( v.type == FLOATINGPOINTARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = FLOATINGPOINT;
-					v0.f = v.fArrayPtr->m_items[index];
-				}
-				else
-				if ( v.type == USERPTRARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = USERPTR;
-					v0.u = v.uArrayPtr->m_items[index];
-				}
-				else
-				if ( v.type == STRINGARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = STRING;
-					v0.str = v.strArrayPtr->m_items[index];
-				}
-				else
-				if ( v.type == STRUCTARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = STRUCT;
-					v0.s = v.sArrayPtr->m_items[index];
-				}
-				else
-				{
-					CEXCEPTION_ERROR( "err" );
-				}
+				PushItemArray( v, index, state );
 			}
 			break;
 		case OPC_PUSHITEMARRAY:
@@ -975,44 +943,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int index = ToInt( v1 );
 				int lookup = ops[pc++];
 				var &v = state.stack[state.envStack.top()+lookup];
-				if ( v.type == INTEGERARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = INTEGER;
-					v0.i = v.iArrayPtr->m_items[index];
-				}
-				else
-				if ( v.type == FLOATINGPOINTARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = FLOATINGPOINT;
-					v0.f = v.fArrayPtr->m_items[index];
-				}
-				else
-				if ( v.type == USERPTRARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = USERPTR;
-					v0.u = v.uArrayPtr->m_items[index];
-				}
-				else
-				if ( v.type == STRINGARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = STRING;
-					v0.str = v.strArrayPtr->m_items[index];
-				}
-				else
-				if ( v.type == STRUCTARRAY )
-				{
-					var &v0 = state.stack.push();
-					v0.type = STRUCT;
-					v0.s = v.sArrayPtr->m_items[index];
-				}
-				else
-				{
-					CEXCEPTION_ERROR( "err" );
-				}
+				PushItemArray( v, index, state );
 			}
 			break;
 		case OPC_PUSHSTR:
@@ -1031,45 +962,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int type = ops[pc++];
 				int index = ops[pc++];
 				var &item = state.stack[state.envStack.top()+index];
-				vmstructprops *props = state.structProps[type];
-				vmstruct *structmem = (vmstruct *)malloc( sizeof(vmstruct) + sizeof(var)*props->properties.size() );
-				item.type = STRUCT;
-				item.s = structmem;
-				item.s->m_type = type;
-				item.s->m_size = props->properties.size();
-				for ( int i=0; i<props->properties.size(); i++)
-				{
-					var &curitem = item.s->m_data[i];
-					curitem.type = (VARTYPE)props->properties[i].itemType;
-					if ( curitem.type == INTEGERARRAY )
-					{
-						curitem.iArrayPtr = new vmarrayvar<int>;
-					}
-					else
-					if ( curitem.type == FLOATINGPOINTARRAY )
-					{
-						curitem.fArrayPtr = new vmarrayvar<float>;
-					}
-					else
-					if ( curitem.type == USERPTRARRAY )
-					{
-						curitem.uArrayPtr = new vmarrayvar<void*>;
-					}
-					else
-					if ( curitem.type == STRINGARRAY )
-					{
-						curitem.strArrayPtr = new vmarrayvar<vmstring*>;
-					}
-					else
-					if ( curitem.type == STRUCTARRAY )
-					{
-						curitem.sArrayPtr = new vmarrayvar<vmstruct*>;
-					}
-					else
-					{
-						curitem.i = 0;
-					}
-				}
+				MakeStruct( item, type, state );
 			}
 			break;
 		case OPC_MAKESTRUCTG:
@@ -1077,45 +970,7 @@ void RunVM( int const *ops, int numOps, int loc, vmstate &state )
 				int type = ops[pc++];
 				int index = ops[pc++];
 				var &item = state.globals[index];
-				vmstructprops *props = state.structProps[type];
-				vmstruct *structmem = (vmstruct *)malloc( sizeof(vmstruct) + sizeof(var)*props->properties.size() );
-				item.type = STRUCT;
-				item.s = structmem;
-				item.s->m_type = type;
-				item.s->m_size = props->properties.size();
-				for ( int i=0; i<props->properties.size(); i++)
-				{
-					var &curitem = item.s->m_data[i];
-					curitem.type = (VARTYPE)props->properties[i].itemType;
-					if ( curitem.type == INTEGERARRAY )
-					{
-						curitem.iArrayPtr = new vmarrayvar<int>;
-					}
-					else
-					if ( curitem.type == FLOATINGPOINTARRAY )
-					{
-						curitem.fArrayPtr = new vmarrayvar<float>;
-					}
-					else
-					if ( curitem.type == USERPTRARRAY )
-					{
-						curitem.uArrayPtr = new vmarrayvar<void*>;
-					}
-					else
-					if ( curitem.type == STRINGARRAY )
-					{
-						curitem.strArrayPtr = new vmarrayvar<vmstring*>;
-					}
-					else
-					if ( curitem.type == STRUCTARRAY )
-					{
-						curitem.sArrayPtr = new vmarrayvar<vmstruct*>;
-					}
-					else
-					{
-						curitem.i = 0;
-					}
-				}
+				MakeStruct( item, type, state );
 			}
 			break;
 		default:

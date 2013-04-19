@@ -61,7 +61,11 @@ public:
 	inline int size() { return pos; }
 	inline void push( T const &item ) { stack[pos++] = item; }
 	inline T& push() { pos++; return stack[pos-1]; }
-	inline void pop( int num=1 ) { pos-=num; }
+	inline void pop( int num=1 ) 
+	{ 
+		pos-=num; 
+		CEXCEPTION_ERROR_CONDITION( pos>=0, "bad stack pop" );
+	}
 	inline void reserve( int r ) { pos += r; }
 	inline void reduce( int r ) { pos -= r; }
 	inline void reset( int r ) { pos = r; }
@@ -297,6 +301,13 @@ struct vmarrayvar
 
 struct vmstruct;
 
+struct vmstructref
+{
+	int type;
+	int offset;
+	vmstruct *s;
+};
+
 struct var
 {
 	VARTYPE type;
@@ -306,12 +317,12 @@ struct var
 		float f;
 		void *u;
 		vmstring *str;
-		vmstruct *s;
+		vmstructref s;
 		vmarrayvar<int> *iArrayPtr;
 		vmarrayvar<float> *fArrayPtr;
 		vmarrayvar<void*> *uArrayPtr;
 		vmarrayvar<vmstring*> *strArrayPtr;
-		vmarrayvar<vmstruct*> *sArrayPtr;
+		vmarrayvar<vmstructref> *sArrayPtr;
 		bool (*cfunc)( struct vmstate &state );
 	};
 };
@@ -320,7 +331,7 @@ struct var
 #pragma warning(disable: 4200)
 struct vmstruct
 {
-	int m_type;
+	int m_creationType;
 	int m_size;
 	var m_data[0];
 };

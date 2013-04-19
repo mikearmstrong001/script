@@ -394,6 +394,7 @@ class StructDecl
 	struct Element
 	{
 		//std::wstring name;
+		int index;
 		int hashName;
 		VarDeclAst* varInfo;
 	};
@@ -410,7 +411,7 @@ public:
 
 	std::vector< Element > const &GetProps() const { return m_flattenedProps; }
 
-	int FindElementIndex( int hashName );
+	int FindElementIndex( int &type, int hashName );
 
 	virtual void GenerateProps( class Package *pkg, vmstate &state );
 };
